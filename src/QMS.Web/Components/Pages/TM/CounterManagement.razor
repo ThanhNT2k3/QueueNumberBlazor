@@ -21,26 +21,7 @@
     .counters-page {
         max-width: 1400px;
         margin: 0 auto;
-    }
-
-    .page-header {
-        background: white;
-        border-radius: 20px;
-        padding: 2rem;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-        margin-bottom: 2rem;
-    }
-
-    .page-title {
-        font-size: 32px;
-        font-weight: 800;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-    }
-
-    .counters-grid {
+    }    .counters-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
         gap: 1.5rem;
@@ -83,41 +64,6 @@
         font-weight: 700;
     }
 
-    .counter-status {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
-        padding: 0.5rem 1rem;
-        border-radius: 12px;
-        font-size: 12px;
-        font-weight: 700;
-        margin-bottom: 1rem;
-    }
-
-    .counter-status.online {
-        background: #d1fae5;
-        color: #065f46;
-    }
-
-    .counter-status.busy {
-        background: #fef3c7;
-        color: #92400e;
-    }
-
-    .counter-status.break {
-        background: #dbeafe;
-        color: #1e40af;
-    }
-
-    .counter-status.offline {
-        background: #fee2e2;
-        color: #991b1b;
-    }
-
-    .counter-status i {
-        font-size: 8px;
-    }
-
     .assigned-user {
         background: #f8fafc;
         border-radius: 12px;
@@ -133,30 +79,11 @@
         margin-bottom: 0.5rem;
     }
 
-    .user-info-compact {
+    .counter-actions {
         display: flex;
-        align-items: center;
-        gap: 0.75rem;
+        gap: 0.5rem;
     }
 
-    .user-avatar-small {
-        width: 32px;
-        height: 32px;
-        border-radius: 50%;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        font-weight: 700;
-        font-size: 12px;
-    }
-
-    .user-name-small {
-        font-weight: 600;
-        color: #1e293b;
-        font-size: 14px;
-    }
 
     .counter-services {
         background: #f8fafc;
@@ -247,12 +174,6 @@
         gap: 0.75rem;
     }
 
-    .service-checkbox {
-        width: 20px;
-        height: 20px;
-        cursor: pointer;
-    }
-
     .service-name {
         font-weight: 600;
         color: #1e293b;
@@ -295,133 +216,9 @@
         transform: translateX(20px);
     }
 
-    .counter-actions {
-        display: flex;
-        gap: 0.5rem;
-    }
 
-    .btn-assign {
-        flex: 1;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border: none;
-        padding: 0.75rem;
-        border-radius: 10px;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        font-size: 14px;
-    }
 
-    .btn-assign:hover:not(:disabled) {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-    }
 
-    .btn-assign:disabled {
-        background: #94a3b8;
-        cursor: not-allowed;
-        opacity: 0.6;
-    }
-
-    .btn-unassign {
-        flex: 1;
-        background: #ef4444;
-        color: white;
-        border: none;
-        padding: 0.75rem;
-        border-radius: 10px;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        font-size: 14px;
-    }
-
-    .btn-unassign:hover {
-        background: #dc2626;
-        transform: translateY(-2px);
-    }
-
-    .modal-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0, 0, 0, 0.5);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 9999;
-    }
-
-    .modal-content {
-        background: white;
-        border-radius: 20px;
-        padding: 2rem;
-        max-width: 500px;
-        width: 90%;
-        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-    }
-
-    .modal-title {
-        font-size: 24px;
-        font-weight: 700;
-        color: #1e293b;
-        margin-bottom: 1.5rem;
-    }
-
-    .form-label {
-        font-size: 13px;
-        font-weight: 600;
-        color: #64748b;
-        margin-bottom: 0.5rem;
-        text-transform: uppercase;
-    }
-
-    .form-select-custom {
-        width: 100%;
-        padding: 0.75rem 1rem;
-        border: 2px solid #e2e8f0;
-        border-radius: 10px;
-        font-size: 14px;
-        margin-bottom: 1rem;
-    }
-
-    .form-select-custom:focus {
-        border-color: #667eea;
-        outline: none;
-    }
-
-    .modal-actions {
-        display: flex;
-        gap: 1rem;
-        margin-top: 1.5rem;
-    }
-
-    .btn-modal {
-        flex: 1;
-        padding: 0.75rem;
-        border: none;
-        border-radius: 10px;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.3s ease;
-    }
-
-    .btn-modal.primary {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-    }
-
-    .btn-modal.secondary {
-        background: #f1f5f9;
-        color: #64748b;
-    }
-
-    .btn-modal:hover {
-        transform: translateY(-2px);
-    }
 
     .empty-state {
         text-align: center;
@@ -438,21 +235,17 @@
 
 <div class="counters-page">
     <!-- Header -->
-    <div class="page-header mb-4">
-    <div class="d-flex justify-content-between align-items-center">
-        <div>
-            <h2 class="mb-1">
-                <i class="bi bi-bank2 me-2 text-primary"></i>
-                Counter Management
-            </h2>
-            <p class="text-muted mb-0">Assign and manage tellers for counters in your branch</p>
-        </div>
-        <button class="btn btn-outline-primary" @onclick="RefreshData" disabled="@isLoading">
-            <i class="bi bi-arrow-clockwise me-2"></i>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <PageHeader Title="Counter Management" 
+                    Subtitle="Assign and manage tellers for counters in your branch"
+                    Icon="bi bi-bank2" />
+        <BaseButton Variant="outline-primary" 
+                   OnClick="RefreshData" 
+                   Disabled="@isLoading"
+                   Icon="bi bi-arrow-clockwise">
             @(isLoading ? "Refreshing..." : "Refresh")
-        </button>
+        </BaseButton>
     </div>
-</div>
 
     <!-- Auth Check Loading -->
     @if (isCheckingAuth)
@@ -505,10 +298,7 @@
                         };
                         var statusText = counter.Status.ToString();
                     }
-                    <div class="counter-status @statusClass">
-                        <i class="bi bi-circle-fill"></i>
-                        <span>@statusText</span>
-                    </div>
+                    <StatusBadge CounterStatus="@counter.Status" />
 
                     <div class="assigned-user">
                         <div class="assigned-label">Assigned Teller</div>
@@ -517,11 +307,9 @@
                             var user = GetUserById(counter.AssignedUserId.Value);
                             if (user != null)
                             {
-                                <div class="user-info-compact">
-                                    <div class="user-avatar-small">
-                                        @GetInitials(user.FullName)
-                                    </div>
-                                    <div class="user-name-small">@user.FullName</div>
+                                <div class="d-flex align-items-center gap-2">
+                                    <UserAvatar FullName="@user.FullName" Size="sm" />
+                                    <div class="fw-semibold text-dark" style="font-size: 14px;">@user.FullName</div>
                                 </div>
                             }
                             else
@@ -569,23 +357,27 @@
                         }
                         @if (!isCounterOnline || !counter.AssignedUserId.HasValue)
                         {
-                            <button class="btn-assign" @onclick="() => OpenAssignModal(counter)">
-                                <i class="bi bi-person-plus me-2"></i>
+                            <BaseButton Variant="primary" 
+                                       Class="flex-grow-1" 
+                                       OnClick="() => OpenAssignModal(counter)"
+                                       Icon="bi bi-person-plus">
                                 @(counter.AssignedUserId.HasValue ? "Reassign" : "Assign")
-                            </button>
+                            </BaseButton>
                         }
                         else
                         {
-                            <button class="btn-assign" disabled title="Cannot assign while counter is online">
-                                <i class="bi bi-lock me-2"></i>
+                            <BaseButton Variant="primary" 
+                                       Class="flex-grow-1" 
+                                       Disabled="true"
+                                       Icon="bi bi-lock">
                                 Counter Online
-                            </button>
+                            </BaseButton>
                         }
                         @if (counter.AssignedUserId.HasValue && !isCounterOnline)
                         {
-                            <button class="btn-unassign" @onclick="() => UnassignTeller(counter)">
-                                <i class="bi bi-person-x"></i>
-                            </button>
+                            <BaseButton Variant="danger" 
+                                       OnClick="() => UnassignTeller(counter)"
+                                       Icon="bi bi-person-x" />
                         }
                     </div>
                 </div>
@@ -596,114 +388,100 @@
 </div>
 
 <!-- Assign Modal -->
-@if (showAssignModal && selectedCounter != null)
-{
-    <div class="modal-overlay" @onclick="CloseAssignModal">
-        <div class="modal-content" @onclick:stopPropagation="true">
-            <div class="modal-title">
-                <i class="bi bi-person-plus me-2"></i>
-                Assign Teller to @selectedCounter.Name
-            </div>
-
-            <div>
-                <div class="form-label">Select Teller</div>
-                <select class="form-select-custom" @bind="selectedTellerId">
-                    <option value="">-- Select a teller --</option>
-                    @if (availableTellers != null)
-                    {
-                        @foreach (var teller in availableTellers)
-                        {
-                            <option value="@teller.Id">@teller.FullName (@teller.Email)</option>
-                        }
-                    }
-                </select>
-                @if (availableTellers != null && !availableTellers.Any())
+<BaseModal @bind-IsOpen="showAssignModal" 
+          Title="Assign Teller" 
+          Size="md"
+          OnClose="CloseAssignModal">
+    <HeaderContent>
+        <i class="bi bi-person-plus me-2"></i>
+        Assign Teller to @selectedCounter?.Name
+    </HeaderContent>
+    <BodyContent>
+        <BaseSelect Label="Select Teller" @bind-Value="selectedTellerId">
+            <option value="">-- Select a teller --</option>
+            @if (availableTellers != null)
+            {
+                @foreach (var teller in availableTellers)
                 {
-                    <div class="text-warning small mt-2">
-                        <i class="bi bi-exclamation-triangle me-1"></i>
-                        All tellers are currently assigned to counters
-                    </div>
+                    <option value="@teller.Id">@teller.FullName (@teller.Email)</option>
                 }
-            </div>
+            }
+        </BaseSelect>
+        @if (availableTellers != null && !availableTellers.Any())
+        {
+            <BaseAlert Variant="warning" 
+                      Icon="bi bi-exclamation-triangle"
+                      Message="All tellers are currently assigned to counters"
+                      Dismissible="false" />
+        }
 
-            <div>
-                <div class="form-label">Notes (Optional)</div>
-                <textarea class="form-select-custom" rows="3" @bind="assignmentNotes" placeholder="Add any notes about this assignment..."></textarea>
-            </div>
-
-            <div class="modal-actions">
-                <button class="btn-modal secondary" @onclick="CloseAssignModal">Cancel</button>
-                <button class="btn-modal primary" @onclick="ConfirmAssignment">
-                    <i class="bi bi-check-circle me-2"></i>
-                    Assign
-                </button>
-            </div>
-        </div>
-    </div>
-}
+        <BaseInput Label="Notes (Optional)" 
+                  @bind-Value="assignmentNotes" 
+                  Placeholder="Add any notes about this assignment..."
+                  Rows="3" />
+    </BodyContent>
+    <FooterContent>
+        <BaseButton Variant="secondary" OnClick="CloseAssignModal">Cancel</BaseButton>
+        <BaseButton Variant="primary" OnClick="ConfirmAssignment" Icon="bi bi-check-circle">
+            Assign
+        </BaseButton>
+    </FooterContent>
+</BaseModal>
 
 <!-- Edit Services Modal -->
-@if (showEditServicesModal && selectedCounter != null)
-{
-    <div class="modal-overlay" @onclick="CloseEditServicesModal">
-        <div class="modal-content" @onclick:stopPropagation="true" style="max-width: 600px;">
-            <div class="modal-title">
-                <i class="bi bi-gear me-2"></i>
-                Configure Services for @selectedCounter.Name
-            </div>
+<BaseModal @bind-IsOpen="showEditServicesModal" 
+          Title="Configure Services" 
+          Size="lg"
+          OnClose="CloseEditServicesModal">
+    <HeaderContent>
+        <i class="bi bi-gear me-2"></i>
+        Configure Services for @selectedCounter?.Name
+    </HeaderContent>
+    <BodyContent>
+        <p class="text-muted mb-3">
+            Select which services this counter can handle. Mark primary services with the toggle.
+        </p>
 
-            <div style="margin-bottom: 1rem;">
-                <p style="color: #64748b; font-size: 14px; margin: 0;">
-                    Select which services this counter can handle. Mark primary services with the toggle.
-                </p>
-            </div>
-
-            <div>
-                @if (allServiceTypes != null)
+        <div>
+            @if (allServiceTypes != null)
+            {
+                @foreach (var serviceType in allServiceTypes)
                 {
-                    @foreach (var serviceType in allServiceTypes)
-                    {
-                        var isSelected = editingServices.Any(s => s.ServiceTypeId == serviceType.Id);
-                        var isPrimary = editingServices.FirstOrDefault(s => s.ServiceTypeId == serviceType.Id)?.IsPrimary ?? false;
-                        
-                        <div class="service-item">
-                            <div class="service-item-left">
-                                <input type="checkbox" 
-                                       class="service-checkbox" 
-                                       checked="@isSelected"
-                                       @onchange="(e) => ToggleService(serviceType.Id, (bool)e.Value!)" />
-                                <span class="service-name">@serviceType.Name</span>
-                            </div>
-                            
-                            @if (isSelected)
-                            {
-                                <div class="primary-toggle">
-                                    <span>Primary</span>
-                                    <div class="toggle-switch @(isPrimary ? "active" : "")" 
-                                         @onclick="() => TogglePrimary(serviceType.Id)"
-                                         >
-                                        <div class="toggle-slider"></div>
-                                    </div>
-                                </div>
-                            }
+                    var isSelected = editingServices.Any(s => s.ServiceTypeId == serviceType.Id);
+                    var isPrimary = editingServices.FirstOrDefault(s => s.ServiceTypeId == serviceType.Id)?.IsPrimary ?? false;
+                    
+                    <div class="service-item">
+                        <div class="service-item-left">
+                            <BaseCheckbox Checked="@isSelected"
+                                         CheckedChanged="(e) => ToggleService(serviceType.Id, e)"
+                                         ContainerClass="mb-0" />
+                            <span class="service-name">@serviceType.Name</span>
                         </div>
-                    }
+                        
+                        @if (isSelected)
+                        {
+                            <div class="primary-toggle">
+                                <span>Primary</span>
+                                <div class="toggle-switch @(isPrimary ? "active" : "")" 
+                                     @onclick="() => TogglePrimary(serviceType.Id)">
+                                    <div class="toggle-slider"></div>
+                                </div>
+                            </div>
+                        }
+                    </div>
                 }
-            </div>
-
-            <div class="modal-actions">
-                <button class="btn-secondary" @onclick="CloseEditServicesModal">
-                    <i class="bi bi-x-lg me-2"></i>
-                    Cancel
-                </button>
-                <button class="btn-primary" @onclick="SaveServices">
-                    <i class="bi bi-check-lg me-2"></i>
-                    Save Changes
-                </button>
-            </div>
+            }
         </div>
-    </div>
-}
+    </BodyContent>
+    <FooterContent>
+        <BaseButton Variant="secondary" OnClick="CloseEditServicesModal" Icon="bi bi-x-lg">
+            Cancel
+        </BaseButton>
+        <BaseButton Variant="primary" OnClick="SaveServices" Icon="bi bi-check-lg">
+            Save Changes
+        </BaseButton>
+    </FooterContent>
+</BaseModal>
 
 @code {
     private IEnumerable<Counter>? counters;
