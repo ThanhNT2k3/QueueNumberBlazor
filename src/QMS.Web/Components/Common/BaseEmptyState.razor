@@ -1,0 +1,172 @@
+<div class="base-empty-state @ContainerClass">
+    @if (!string.IsNullOrEmpty(Icon))
+    {
+        <div class="empty-state-icon @IconClass">
+            <i class="@Icon"></i>
+        </div>
+    }
+    else if (IconContent != null)
+    {
+        <div class="empty-state-icon-custom">
+            @IconContent
+        </div>
+    }
+    
+    @if (!string.IsNullOrEmpty(Title))
+    {
+        <h4 class="empty-state-title">@Title</h4>
+    }
+    
+    @if (!string.IsNullOrEmpty(Message))
+    {
+        <p class="empty-state-message">@Message</p>
+    }
+    
+    @if (ChildContent != null)
+    {
+        <div class="empty-state-content">
+            @ChildContent
+        </div>
+    }
+    
+    @if (ActionContent != null)
+    {
+        <div class="empty-state-actions">
+            @ActionContent
+        </div>
+    }
+</div>
+
+<style>
+    .base-empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        color: #94a3b8;
+    }
+
+    .base-empty-state.compact {
+        padding: 2rem 1rem;
+    }
+
+    .base-empty-state.spacious {
+        padding: 6rem 2rem;
+    }
+
+    .empty-state-icon {
+        font-size: 64px;
+        margin-bottom: 1.5rem;
+        opacity: 0.3;
+        animation: fadeInScale 0.5s ease-out;
+    }
+
+    .empty-state-icon.primary {
+        color: #667eea;
+        opacity: 0.4;
+    }
+
+    .empty-state-icon.success {
+        color: #10b981;
+        opacity: 0.4;
+    }
+
+    .empty-state-icon.warning {
+        color: #f59e0b;
+        opacity: 0.4;
+    }
+
+    .empty-state-icon.danger {
+        color: #ef4444;
+        opacity: 0.4;
+    }
+
+    .empty-state-icon.info {
+        color: #3b82f6;
+        opacity: 0.4;
+    }
+
+    .empty-state-icon-custom {
+        margin-bottom: 1.5rem;
+        animation: fadeInScale 0.5s ease-out;
+    }
+
+    .empty-state-title {
+        font-size: 20px;
+        font-weight: 700;
+        color: #475569;
+        margin-bottom: 0.75rem;
+        animation: fadeInUp 0.5s ease-out 0.1s both;
+    }
+
+    .empty-state-message {
+        font-size: 15px;
+        color: #94a3b8;
+        margin-bottom: 1.5rem;
+        max-width: 500px;
+        margin-left: auto;
+        margin-right: auto;
+        line-height: 1.6;
+        animation: fadeInUp 0.5s ease-out 0.2s both;
+    }
+
+    .empty-state-content {
+        margin-bottom: 1.5rem;
+        animation: fadeInUp 0.5s ease-out 0.3s both;
+    }
+
+    .empty-state-actions {
+        animation: fadeInUp 0.5s ease-out 0.4s both;
+    }
+
+    @@keyframes fadeInScale {
+        from {
+            opacity: 0;
+            transform: scale(0.8);
+        }
+        to {
+            opacity: 0.3;
+            transform: scale(1);
+        }
+    }
+
+    .empty-state-icon.primary,
+    .empty-state-icon.success,
+    .empty-state-icon.warning,
+    .empty-state-icon.danger,
+    .empty-state-icon.info {
+        @@keyframes fadeInScale {
+            from {
+                opacity: 0;
+                transform: scale(0.8);
+            }
+            to {
+                opacity: 0.4;
+                transform: scale(1);
+            }
+        }
+    }
+
+    @@keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+</style>
+
+@code {
+    [Parameter] public string? Icon { get; set; } = "bi bi-inbox";
+    [Parameter] public string? Title { get; set; } = "No Data Found";
+    [Parameter] public string? Message { get; set; }
+    [Parameter] public RenderFragment? IconContent { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public RenderFragment? ActionContent { get; set; }
+    [Parameter] public string ContainerClass { get; set; } = "";
+    [Parameter] public string Size { get; set; } = "default"; // compact, default, spacious
+    [Parameter] public string IconVariant { get; set; } = "default"; // default, primary, success, warning, danger, info
+
+    private string IconClass => IconVariant != "default" ? IconVariant : "";
+}

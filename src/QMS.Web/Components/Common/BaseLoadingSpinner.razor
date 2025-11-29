@@ -1,0 +1,260 @@
+<div class="base-loading-spinner @ContainerClass @GetSizeClass()">
+    @if (Variant == "spinner")
+    {
+        <div class="spinner-border @GetColorClass()" role="status">
+            <span class="visually-hidden">@LoadingText</span>
+        </div>
+    }
+    else if (Variant == "dots")
+    {
+        <div class="loading-dots">
+            <div class="dot @GetColorClass()"></div>
+            <div class="dot @GetColorClass()"></div>
+            <div class="dot @GetColorClass()"></div>
+        </div>
+    }
+    else if (Variant == "pulse")
+    {
+        <div class="loading-pulse @GetColorClass()"></div>
+    }
+    else if (Variant == "bars")
+    {
+        <div class="loading-bars">
+            <div class="bar @GetColorClass()"></div>
+            <div class="bar @GetColorClass()"></div>
+            <div class="bar @GetColorClass()"></div>
+            <div class="bar @GetColorClass()"></div>
+        </div>
+    }
+    
+    @if (ShowText && !string.IsNullOrEmpty(LoadingText))
+    {
+        <p class="loading-text">@LoadingText</p>
+    }
+    
+    @if (ChildContent != null)
+    {
+        <div class="loading-content">
+            @ChildContent
+        </div>
+    }
+</div>
+
+<style>
+    .base-loading-spinner {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+    }
+
+    .base-loading-spinner.inline {
+        display: inline-flex;
+        padding: 0;
+    }
+
+    .base-loading-spinner.fullscreen {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(255, 255, 255, 0.9);
+        backdrop-filter: blur(4px);
+        z-index: 9999;
+        padding: 0;
+    }
+
+    /* Size Classes */
+    .base-loading-spinner.size-sm .spinner-border {
+        width: 1.5rem;
+        height: 1.5rem;
+    }
+
+    .base-loading-spinner.size-md .spinner-border {
+        width: 2.5rem;
+        height: 2.5rem;
+    }
+
+    .base-loading-spinner.size-lg .spinner-border {
+        width: 4rem;
+        height: 4rem;
+    }
+
+    /* Spinner Colors */
+    .text-primary { color: #667eea !important; }
+    .text-success { color: #10b981 !important; }
+    .text-danger { color: #ef4444 !important; }
+    .text-warning { color: #f59e0b !important; }
+    .text-info { color: #3b82f6 !important; }
+
+    /* Loading Dots */
+    .loading-dots {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .loading-dots .dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: #667eea;
+        animation: dotPulse 1.4s ease-in-out infinite;
+    }
+
+    .loading-dots .dot:nth-child(1) {
+        animation-delay: 0s;
+    }
+
+    .loading-dots .dot:nth-child(2) {
+        animation-delay: 0.2s;
+    }
+
+    .loading-dots .dot:nth-child(3) {
+        animation-delay: 0.4s;
+    }
+
+    .loading-dots .dot.text-primary { background: #667eea; }
+    .loading-dots .dot.text-success { background: #10b981; }
+    .loading-dots .dot.text-danger { background: #ef4444; }
+    .loading-dots .dot.text-warning { background: #f59e0b; }
+    .loading-dots .dot.text-info { background: #3b82f6; }
+
+    @@keyframes dotPulse {
+        0%, 80%, 100% {
+            opacity: 0.3;
+            transform: scale(0.8);
+        }
+        40% {
+            opacity: 1;
+            transform: scale(1);
+        }
+    }
+
+    /* Loading Pulse */
+    .loading-pulse {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        background: #667eea;
+        animation: pulse 1.5s ease-in-out infinite;
+    }
+
+    .loading-pulse.text-primary { background: #667eea; }
+    .loading-pulse.text-success { background: #10b981; }
+    .loading-pulse.text-danger { background: #ef4444; }
+    .loading-pulse.text-warning { background: #f59e0b; }
+    .loading-pulse.text-info { background: #3b82f6; }
+
+    @@keyframes pulse {
+        0%, 100% {
+            opacity: 0.4;
+            transform: scale(0.8);
+        }
+        50% {
+            opacity: 1;
+            transform: scale(1);
+        }
+    }
+
+    /* Loading Bars */
+    .loading-bars {
+        display: flex;
+        gap: 0.5rem;
+        align-items: flex-end;
+        height: 40px;
+    }
+
+    .loading-bars .bar {
+        width: 8px;
+        background: #667eea;
+        border-radius: 4px;
+        animation: barScale 1.2s ease-in-out infinite;
+    }
+
+    .loading-bars .bar:nth-child(1) {
+        animation-delay: 0s;
+    }
+
+    .loading-bars .bar:nth-child(2) {
+        animation-delay: 0.1s;
+    }
+
+    .loading-bars .bar:nth-child(3) {
+        animation-delay: 0.2s;
+    }
+
+    .loading-bars .bar:nth-child(4) {
+        animation-delay: 0.3s;
+    }
+
+    .loading-bars .bar.text-primary { background: #667eea; }
+    .loading-bars .bar.text-success { background: #10b981; }
+    .loading-bars .bar.text-danger { background: #ef4444; }
+    .loading-bars .bar.text-warning { background: #f59e0b; }
+    .loading-bars .bar.text-info { background: #3b82f6; }
+
+    @@keyframes barScale {
+        0%, 100% {
+            height: 10px;
+        }
+        50% {
+            height: 40px;
+        }
+    }
+
+    /* Loading Text */
+    .loading-text {
+        margin-top: 1rem;
+        color: #64748b;
+        font-size: 14px;
+        font-weight: 500;
+        animation: fadeInUp 0.5s ease-out;
+    }
+
+    .loading-content {
+        margin-top: 1.5rem;
+        text-align: center;
+    }
+
+    @@keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+</style>
+
+@code {
+    [Parameter] public string Variant { get; set; } = "spinner"; // spinner, dots, pulse, bars
+    [Parameter] public string Size { get; set; } = "md"; // sm, md, lg
+    [Parameter] public string Color { get; set; } = "primary"; // primary, success, danger, warning, info
+    [Parameter] public string LoadingText { get; set; } = "Loading...";
+    [Parameter] public bool ShowText { get; set; } = true;
+    [Parameter] public bool Fullscreen { get; set; } = false;
+    [Parameter] public bool Inline { get; set; } = false;
+    [Parameter] public string ContainerClass { get; set; } = "";
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private string GetSizeClass()
+    {
+        var classes = new List<string>();
+        
+        if (Fullscreen) classes.Add("fullscreen");
+        else if (Inline) classes.Add("inline");
+        
+        if (Size != "md") classes.Add($"size-{Size}");
+        
+        return string.Join(" ", classes);
+    }
+
+    private string GetColorClass()
+    {
+        return $"text-{Color}";
+    }
+}

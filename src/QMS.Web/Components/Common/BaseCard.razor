@@ -1,0 +1,172 @@
+<div class="base-card @ContainerClass @GetPaddingClass()">
+    @if (!string.IsNullOrEmpty(Title) || HeaderContent != null)
+    {
+        <div class="card-header @(NoBorder ? "border-0" : "")">
+            @if (HeaderContent != null)
+            {
+                @HeaderContent
+            }
+            else if (!string.IsNullOrEmpty(Title))
+            {
+                <h5 class="card-title mb-0">
+                    @if (!string.IsNullOrEmpty(Icon))
+                    {
+                        <i class="@Icon me-2"></i>
+                    }
+                    @Title
+                </h5>
+                @if (!string.IsNullOrEmpty(Subtitle))
+                {
+                    <p class="card-subtitle text-muted mb-0 mt-1">@Subtitle</p>
+                }
+            }
+            @if (ActionContent != null)
+            {
+                <div class="card-actions">
+                    @ActionContent
+                </div>
+            }
+        </div>
+    }
+    
+    @if (BodyContent != null)
+    {
+        <div class="card-body @(NoPadding ? "p-0" : "")">
+            @BodyContent
+        </div>
+    }
+    else
+    {
+        @ChildContent
+    }
+    
+    @if (FooterContent != null)
+    {
+        <div class="card-footer @(NoBorder ? "border-0" : "")">
+            @FooterContent
+        </div>
+    }
+</div>
+
+<style>
+    .base-card {
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        transition: all 0.3s ease;
+        border: 1px solid transparent;
+        overflow: hidden;
+    }
+
+    .base-card.hoverable:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+        border-color: #667eea;
+    }
+
+    .base-card.clickable {
+        cursor: pointer;
+    }
+
+    .base-card .card-header {
+        padding: 1.5rem;
+        border-bottom: 1px solid #f1f5f9;
+        background: #fafbfc;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .base-card .card-title {
+        font-weight: 700;
+        color: #1e293b;
+        font-size: 18px;
+        display: flex;
+        align-items: center;
+    }
+
+    .base-card .card-subtitle {
+        font-size: 14px;
+        color: #64748b;
+    }
+
+    .base-card .card-actions {
+        margin-left: auto;
+    }
+
+    .base-card .card-body {
+        padding: 1.5rem;
+    }
+
+    .base-card .card-footer {
+        padding: 1rem 1.5rem;
+        border-top: 1px solid #f1f5f9;
+        background: #fafbfc;
+    }
+
+    .base-card.padding-sm .card-body {
+        padding: 1rem;
+    }
+
+    .base-card.padding-lg .card-body {
+        padding: 2rem;
+    }
+
+    .base-card.padding-none .card-body {
+        padding: 0;
+    }
+
+    .base-card.variant-outlined {
+        box-shadow: none;
+        border: 2px solid #e2e8f0;
+    }
+
+    .base-card.variant-elevated {
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.12);
+    }
+
+    .base-card.variant-flat {
+        box-shadow: none;
+        border: none;
+        background: #f8fafc;
+    }
+</style>
+
+@code {
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public string? Subtitle { get; set; }
+    [Parameter] public string? Icon { get; set; }
+    [Parameter] public RenderFragment? HeaderContent { get; set; }
+    [Parameter] public RenderFragment? BodyContent { get; set; }
+    [Parameter] public RenderFragment? FooterContent { get; set; }
+    [Parameter] public RenderFragment? ActionContent { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public string ContainerClass { get; set; } = "";
+    [Parameter] public bool Hoverable { get; set; } = false;
+    [Parameter] public bool Clickable { get; set; } = false;
+    [Parameter] public bool NoBorder { get; set; } = false;
+    [Parameter] public bool NoPadding { get; set; } = false;
+    [Parameter] public string Padding { get; set; } = "md"; // sm, md, lg, none
+    [Parameter] public string Variant { get; set; } = "default"; // default, outlined, elevated, flat
+    [Parameter] public EventCallback OnClick { get; set; }
+
+    private string GetPaddingClass()
+    {
+        var classes = new List<string>();
+        
+        if (Hoverable) classes.Add("hoverable");
+        if (Clickable) classes.Add("clickable");
+        if (Padding != "md") classes.Add($"padding-{Padding}");
+        if (Variant != "default") classes.Add($"variant-{Variant}");
+        
+        return string.Join(" ", classes);
+    }
+
+    private async Task HandleClick()
+    {
+        if (Clickable)
+        {
+            await OnClick.InvokeAsync();
+        }
+    }
+}
