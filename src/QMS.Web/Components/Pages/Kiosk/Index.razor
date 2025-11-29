@@ -1,0 +1,178 @@
+@page "/kiosk"
+@rendermode InteractiveServer
+@layout Layout.KioskLayout
+@inject IRepository<Branch> BranchRepository
+@inject NavigationManager Navigation
+
+<div class="kiosk-container">
+    <div class="welcome-section animate-fade-in">
+        <div class="logo-area mb-4">
+            <i class="bi bi-bank2 display-1 text-primary"></i>
+        </div>
+        <h1 class="display-3 fw-bold text-primary mb-3">Welcome to Standard Chartered</h1>
+        <p class="lead text-muted fs-4">Please select your branch to begin</p>
+    </div>
+
+    <div class="branches-grid mt-5">
+        @if (branches == null)
+        {
+            <div class="text-center">
+                <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        }
+        else
+        {
+            @foreach (var branch in branches)
+            {
+                <div class="branch-item animate-slide-up">
+                    <div class="branch-card" @onclick="() => SelectBranch(branch.Id)">
+                        <div class="branch-icon">
+                            <i class="bi bi-building"></i>
+                        </div>
+                        <div class="branch-info">
+                            <h2 class="branch-name">@branch.Name</h2>
+                            <p class="branch-address">
+                                <i class="bi bi-geo-alt-fill me-2"></i>@branch.Address
+                            </p>
+                        </div>
+                        <div class="branch-arrow">
+                            <i class="bi bi-chevron-right"></i>
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+    </div>
+</div>
+
+<style>
+    .kiosk-container {
+        min-height: 100vh;
+        padding: 3rem 2rem;
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    }
+    
+    .welcome-section {
+        text-align: center;
+        padding: 2rem 0;
+    }
+    
+    .logo-area i {
+        animation: pulse 2s ease-in-out infinite;
+    }
+    
+    .branches-grid {
+        max-width: 900px;
+        margin: 0 auto;
+        display: grid;
+        gap: 1.5rem;
+    }
+    
+    .branch-card {
+        background: white;
+        border-radius: 20px;
+        padding: 2rem;
+        display: flex;
+        align-items: center;
+        gap: 1.5rem;
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+        border: 2px solid transparent;
+    }
+    
+    .branch-card:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 12px 24px rgba(0, 123, 255, 0.15);
+        border-color: #007bff;
+    }
+    
+    .branch-icon {
+        width: 80px;
+        height: 80px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+    
+    .branch-icon i {
+        font-size: 2.5rem;
+        color: white;
+    }
+    
+    .branch-info {
+        flex: 1;
+        text-align: left;
+    }
+    
+    .branch-name {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: #1a1a1a;
+        margin-bottom: 0.5rem;
+    }
+    
+    .branch-address {
+        color: #6c757d;
+        font-size: 1.1rem;
+        margin: 0;
+    }
+    
+    .branch-arrow {
+        font-size: 2rem;
+        color: #007bff;
+        transition: transform 0.3s;
+    }
+    
+    .branch-card:hover .branch-arrow {
+        transform: translateX(8px);
+    }
+    
+    
+    @@keyframes pulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+    }
+    
+    @@keyframes fade-in {
+        from { opacity: 0; transform: translateY(-20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    @@keyframes slide-up {
+        from { opacity: 0; transform: translateY(30px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .animate-fade-in {
+        animation: fade-in 0.6s ease-out;
+    }
+    
+    .animate-slide-up {
+        animation: slide-up 0.5s ease-out;
+        animation-fill-mode: both;
+    }
+    
+    .animate-slide-up:nth-child(1) { animation-delay: 0.1s; }
+    .animate-slide-up:nth-child(2) { animation-delay: 0.2s; }
+    .animate-slide-up:nth-child(3) { animation-delay: 0.3s; }
+</style>
+
+@code {
+    private IEnumerable<Branch>? branches;
+
+    protected override async Task OnInitializedAsync()
+    {
+        branches = await BranchRepository.GetAllAsync();
+    }
+
+    private void SelectBranch(int branchId)
+    {
+        Navigation.NavigateTo($"/kiosk/branch/{branchId}/services");
+    }
+}

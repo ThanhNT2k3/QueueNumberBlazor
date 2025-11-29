@@ -1,0 +1,14 @@
+<div class="language-switcher">
+    <button class="btn btn-sm @(CurrentLanguage == "en" ? "btn-primary" : "btn-outline-primary")" @onclick="@(() => SetLanguage("en"))">EN</button>
+    <button class="btn btn-sm @(CurrentLanguage == "vi" ? "btn-primary" : "btn-outline-primary")" @onclick="@(() => SetLanguage("vi"))">VN</button>
+</div>
+
+@code {
+    private string CurrentLanguage = "en";
+
+    private void SetLanguage(string lang)
+    {
+        CurrentLanguage = lang;
+        // In a real app, this would set a cookie or service and reload/notify components
+    }
+}

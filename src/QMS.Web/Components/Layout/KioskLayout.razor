@@ -1,0 +1,21 @@
+@inherits LayoutComponentBase
+
+<div class="kiosk-layout">
+    <div class="kiosk-header p-3 d-flex justify-content-end">
+        <LanguageSwitcher />
+    </div>
+    <main>
+        @Body
+    </main>
+</div>
+
+<style>
+    .kiosk-layout {
+        height: 100vh;
+        width: 100vw;
+        display: flex;
+        flex-direction: column;
+        background-color: #f8f9fa;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+</style>

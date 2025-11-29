@@ -1,0 +1,313 @@
+@page "/kiosk/ticket/{TicketId:int}"
+@rendermode InteractiveServer
+@layout Layout.KioskLayout
+@inject ITicketService TicketService
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+@using Microsoft.AspNetCore.SignalR.Client
+@implements IAsyncDisposable
+
+<div class="ticket-container">
+    <div class="ticket-card animate-pop-in">
+        @if (ticket == null)
+        {
+            <div class="text-center p-5">
+                <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status"></div>
+            </div>
+        }
+        else
+        {
+            <div class="ticket-header">
+                <i class="bi bi-check-circle-fill text-success display-1 mb-3"></i>
+                <h2 class="text-muted mb-4">Your Ticket Number</h2>
+            </div>
+            
+            <div class="ticket-number-display">
+                <div class="ticket-number">@ticket.TicketNumber</div>
+            </div>
+            
+            <div class="ticket-info">
+                <p class="lead mb-4">Please wait for your number to be called</p>
+                
+                <div class="info-grid">
+                    <div class="info-item">
+                        <i class="bi bi-clock"></i>
+                        <span>@ticket.CreatedAt.ToLocalTime().ToString("HH:mm:ss")</span>
+                    </div>
+                    @if (ticket.Counter != null)
+                    {
+                        <div class="info-item">
+                            <i class="bi bi-shop"></i>
+                            <span><strong>@ticket.Counter.Name</strong></span>
+                        </div>
+                    }
+                </div>
+            </div>
+            
+            <div class="countdown-section">
+                <div class="countdown-circle">
+                    <svg class="countdown-svg" viewBox="0 0 100 100">
+                        <circle class="countdown-bg" cx="50" cy="50" r="45"></circle>
+                        <circle class="countdown-progress" cx="50" cy="50" r="45" 
+                                style="stroke-dashoffset: @GetDashOffset()"></circle>
+                    </svg>
+                    <div class="countdown-text">@secondsRemaining</div>
+                </div>
+                <p class="countdown-label">Returning to services...</p>
+            </div>
+        }
+    </div>
+</div>
+
+<style>
+    .ticket-container {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    
+    .ticket-card {
+        background: white;
+        border-radius: 32px;
+        padding: 3rem;
+        max-width: 600px;
+        width: 100%;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        text-align: center;
+    }
+    
+    .ticket-header i {
+        animation: scale-bounce 0.6s ease-out;
+    }
+    
+    .ticket-number-display {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 24px;
+        padding: 2rem;
+        margin: 2rem 0;
+        box-shadow: 0 8px 24px rgba(102, 126, 234, 0.3);
+    }
+    
+    .ticket-number {
+        font-size: 4rem;
+        font-weight: 900;
+        color: white;
+        letter-spacing: 0.1em;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+        font-family: 'Courier New', monospace;
+    }
+    
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-top: 2rem;
+    }
+    
+    .info-item {
+        background: #f8f9fa;
+        padding: 1rem;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        font-size: 1.1rem;
+    }
+    
+    .info-item i {
+        font-size: 1.5rem;
+        color: #667eea;
+    }
+    
+    .countdown-section {
+        margin-top: 3rem;
+        padding-top: 2rem;
+        border-top: 2px solid #f0f0f0;
+    }
+    
+    .countdown-circle {
+        width: 120px;
+        height: 120px;
+        margin: 0 auto 1rem;
+        position: relative;
+    }
+    
+    .countdown-svg {
+        transform: rotate(-90deg);
+        width: 100%;
+        height: 100%;
+    }
+    
+    .countdown-bg {
+        fill: none;
+        stroke: #f0f0f0;
+        stroke-width: 8;
+    }
+    
+    .countdown-progress {
+        fill: none;
+        stroke: #667eea;
+        stroke-width: 8;
+        stroke-linecap: round;
+        stroke-dasharray: 283;
+        transition: stroke-dashoffset 1s linear;
+    }
+    
+    .countdown-text {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: #667eea;
+    }
+    
+    .countdown-label {
+        color: #6c757d;
+        font-size: 1.1rem;
+        margin: 0;
+    }
+    
+    
+    @@keyframes pop-in {
+        0% { opacity: 0; transform: scale(0.8); }
+        50% { transform: scale(1.05); }
+        100% { opacity: 1; transform: scale(1); }
+    }
+    
+    @@keyframes scale-bounce {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.2); }
+    }
+    
+    .animate-pop-in {
+        animation: pop-in 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+</style>
+
+@code {
+    [Parameter] public int TicketId { get; set; }
+    private Ticket? ticket;
+    private System.Threading.Timer? redirectTimer;
+    private System.Threading.Timer? countdownTimer;
+    private int secondsRemaining = 5;
+    private HubConnection? printerConnection;
+    private bool printSent = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        ticket = await TicketService.GetTicketByIdAsync(TicketId);
+        
+        // Connect to PrinterHub and send print command
+        await ConnectToPrinterHub();
+        
+        // Countdown timer
+        countdownTimer = new System.Threading.Timer(async _ =>
+        {
+            await InvokeAsync(() =>
+            {
+                secondsRemaining--;
+                StateHasChanged();
+            });
+        }, null, 1000, 1000);
+        
+        // Auto-redirect after 5 seconds
+        redirectTimer = new System.Threading.Timer(async _ =>
+        {
+            await InvokeAsync(() =>
+            {
+                if (ticket != null)
+                {
+                    Navigation.NavigateTo($"/kiosk/branch/{ticket.BranchId}/services");
+                }
+            });
+        }, null, 5000, Timeout.Infinite);
+    }
+    
+    private async Task ConnectToPrinterHub()
+    {
+        try
+        {
+            var hubUrl = Navigation.ToAbsoluteUri("/printerhub").ToString();
+            
+            printerConnection = new HubConnectionBuilder()
+                .WithUrl(hubUrl)
+                .Build();
+
+            // Handle print status
+            printerConnection.On<object>("PrintStatus", (status) =>
+            {
+                Console.WriteLine($"[Kiosk] Print status received: {status}");
+            });
+
+            // Handle print errors
+            printerConnection.On<string>("PrintError", (error) =>
+            {
+                Console.WriteLine($"[Kiosk] Print error: {error}");
+            });
+
+            await printerConnection.StartAsync();
+            Console.WriteLine("[Kiosk] Connected to PrinterHub");
+            
+            // Get available printers and send to first one
+            await SendPrintCommand();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Kiosk] Failed to connect to PrinterHub: {ex.Message}");
+        }
+    }
+
+    private async Task SendPrintCommand()
+    {
+        if (printerConnection == null || ticket == null || printSent) return;
+
+        try
+        {
+            Console.WriteLine("[Kiosk] Sending print command...");
+            
+            // Create JSON string directly
+            var jsonData = System.Text.Json.JsonSerializer.Serialize(new
+            {
+                Id = ticket.Id,
+                TicketNumber = ticket.TicketNumber ?? "N/A",
+                ServiceName = ticket.ServiceType?.Name ?? "N/A",
+                CounterName = ticket.Counter?.Name ?? "Waiting...",
+                CreatedAt = ticket.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss")
+            });
+            
+            Console.WriteLine($"[Kiosk] Sending JSON: {jsonData}");
+            
+            // Send as string
+            await printerConnection.InvokeAsync("BroadcastPrintJson", jsonData);
+            
+            printSent = true;
+            Console.WriteLine("[Kiosk] Print command sent successfully");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Kiosk] Failed to send print command: {ex.Message}");
+            Console.WriteLine($"[Kiosk] Stack trace: {ex.StackTrace}");
+        }
+    }
+    
+    private double GetDashOffset()
+    {
+        return 283 * (1 - (secondsRemaining / 5.0));
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        redirectTimer?.Dispose();
+        countdownTimer?.Dispose();
+        
+        if (printerConnection != null)
+        {
+            await printerConnection.DisposeAsync();
+        }
+    }
+}

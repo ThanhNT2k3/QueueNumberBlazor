@@ -1,0 +1,474 @@
+@page "/login"
+@rendermode InteractiveServer
+@layout Layout.AuthLayout
+@inject IRepository<Branch> BranchRepository
+@inject IRepository<QMS.Domain.Entities.Counter> CounterRepository
+@inject IRepository<QMS.Domain.Entities.User> UserRepository
+@inject ICounterService CounterService
+@inject IQmsNotificationService NotificationService
+@inject NavigationManager Navigation
+@inject QMS.Web.Services.AuthenticationStateService AuthState
+
+@inject IJSRuntime JSRuntime
+
+<div class="login-container">
+    <div class="login-card">
+        <div class="login-header">
+            <i class="bi bi-bank2 display-1 text-primary mb-3"></i>
+            <h2 class="fw-bold mb-2">Standard Chartered QMS</h2>
+            <p class="text-muted">Unified Login Portal</p>
+        </div>
+
+        @if (errorMessage != null)
+        {
+            <div class="alert alert-danger" role="alert">
+                <i class="bi bi-exclamation-triangle me-2"></i>@errorMessage
+            </div>
+        }
+
+        <div class="login-form">
+            <!-- User Selection -->
+            <BaseSelect Label="Select User" 
+                       Value="@selectedUserId.ToString()" 
+                       ValueChanged="OnUserSelectedString"
+                       InputClass="form-select-lg">
+                <option value="0">-- Choose your profile --</option>
+                @if (users != null)
+                {
+                    <optgroup label="Transaction Managers">
+                        @foreach (var user in users.Where(u => u.Role == "TM"))
+                        {
+                            <option value="@user.Id">@user.FullName</option>
+                        }
+                    </optgroup>
+                    <optgroup label="Tellers">
+                        @foreach (var user in users.Where(u => u.Role == "Teller"))
+                        {
+                            <option value="@user.Id">@user.FullName</option>
+                        }
+                    </optgroup>
+                    <optgroup label="Others">
+                        @foreach (var user in users.Where(u => u.Role != "TM" && u.Role != "Teller"))
+                        {
+                            <option value="@user.Id">@user.FullName (@user.Role)</option>
+                        }
+                    </optgroup>
+                }
+            </BaseSelect>
+            <div class="small text-muted mt-2">Debug: SelectedId=@selectedUserId, User=@(selectedUser?.FullName ?? "null"), Disabled=@IsLoginDisabled</div>
+
+            @if (selectedUserId > 0 && selectedUser != null)
+            {
+                <!-- User Info Card -->
+                <div class="user-info-card mb-4">
+                    <div class="d-flex align-items-center gap-3">
+                        <UserAvatar FullName="@selectedUser.FullName" Size="lg" />
+                        <div class="flex-grow-1">
+                            <h5 class="mb-1">@selectedUser.FullName</h5>
+                            <p class="text-muted small mb-0">
+                                <span class="badge @GetRoleBadgeClass(selectedUser.Role) me-2">@selectedUser.Role</span>
+                                @selectedUser.Email
+                            </p>
+                            @if (selectedBranch != null)
+                            {
+                                <p class="text-muted small mb-0 mt-1">
+                                    <i class="bi bi-building me-1"></i>@selectedBranch.Name
+                                </p>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Counter Selection (Only for Tellers) -->
+                @if (selectedUser.Role == "Teller")
+                {
+                    @if (availableCounters != null && availableCounters.Any())
+                    {
+                        <div class="form-group mb-4">
+                            <label class="form-label fw-semibold">
+                                <i class="bi bi-shop me-2"></i>Select Counter
+                            </label>
+                            <div class="counter-grid">
+                                @foreach (var counter in availableCounters)
+                                {
+                                    <div class="counter-option @(selectedCounterId == counter.Id ? "selected" : "")" 
+                                         @onclick="() => selectedCounterId = counter.Id">
+                                        <div class="counter-icon">
+                                            <i class="bi bi-shop"></i>
+                                        </div>
+                                        <div class="counter-name">@counter.Name</div>
+                                        <div class="counter-prefix">Prefix: @counter.Prefix</div>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="alert alert-warning">
+                            <i class="bi bi-exclamation-triangle me-2"></i>
+                            No counters available for your branch.
+                        </div>
+                    }
+                }
+            }
+
+            <!-- Login Button -->
+            <!-- Login Button -->
+            <BaseButton Variant="primary" 
+                       Class="btn-lg w-100 login-btn mb-3" 
+                       OnClick="HandleLogin" 
+                       Disabled="@IsLoginDisabled"
+                       Icon="bi bi-box-arrow-in-right">
+                @GetLoginButtonText()
+            </BaseButton>
+        </div>
+    </div>
+</div>
+
+<form action="/account/login" method="post" id="loginForm" style="display:none">
+    <input type="hidden" name="userId" value="@selectedUserId" />
+    <input type="hidden" name="fullName" value="@selectedUser?.FullName" />
+    <input type="hidden" name="role" value="@selectedUser?.Role" />
+    <input type="hidden" name="branchId" value="@selectedBranchId" />
+    <input type="hidden" name="branchName" value="@selectedBranch?.Name" />
+    <input type="hidden" name="counterId" value="@selectedCounterId" />
+</form>
+
+<script>
+    function submitLoginForm() {
+        document.getElementById('loginForm').submit();
+    }
+</script>
+
+<style>
+    .login-container {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+        background: #ffffff;
+    }
+
+    .login-card {
+        background: white;
+        border-radius: 24px;
+        padding: 3rem;
+        max-width: 600px;
+        width: 100%;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+        border: 1px solid #f0f0f0;
+    }
+
+    .login-header {
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+
+    .login-header i {
+        animation: float 3s ease-in-out infinite;
+    }
+
+
+
+    .user-info-card {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border-radius: 16px;
+        padding: 1.5rem;
+        border: 2px solid #dee2e6;
+    }
+
+
+
+    .counter-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        gap: 1rem;
+    }
+
+    .counter-option {
+        background: white;
+        border: 2px solid #e9ecef;
+        border-radius: 16px;
+        padding: 1rem;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+
+    .counter-option:hover {
+        border-color: #667eea;
+        transform: translateY(-4px);
+        box-shadow: 0 8px 16px rgba(102, 126, 234, 0.2);
+    }
+
+    .counter-option.selected {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-color: #667eea;
+        color: white;
+    }
+
+    .counter-icon {
+        font-size: 1.5rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .counter-option.selected .counter-icon {
+        color: white;
+    }
+
+    .counter-name {
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+        font-size: 0.9rem;
+    }
+
+    .counter-prefix {
+        font-size: 0.8rem;
+        opacity: 0.8;
+    }
+
+    .login-btn {
+        border-radius: 12px;
+        padding: 1rem;
+        font-weight: 600;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        transition: all 0.3s;
+    }
+
+    .login-btn:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 16px rgba(102, 126, 234, 0.3);
+    }
+
+    .login-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    @@keyframes float {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-10px); }
+    }
+</style>
+
+@code {
+    private List<QMS.Domain.Entities.User> users = new();
+    private List<QMS.Domain.Entities.Branch> branches = new();
+    private List<QMS.Domain.Entities.Counter> availableCounters = new();
+    
+    private int selectedUserId = 0;
+    private int selectedBranchId = 0;
+    private int selectedCounterId = 0;
+    
+    private QMS.Domain.Entities.User? selectedUser;
+    private QMS.Domain.Entities.Branch? selectedBranch;
+    private string? errorMessage;
+
+    private bool IsLoginDisabled => 
+        selectedUserId == 0 || 
+        (selectedUser?.Role == "Teller" && selectedCounterId == 0);
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Check if already logged in
+        if (AuthState.IsAuthenticated)
+        {
+            if (AuthState.UserRole == "TM")
+            {
+                Navigation.NavigateTo("/tm/dashboard", true);
+                return;
+            }
+            else if (AuthState.UserRole == "Teller" && AuthState.CounterId.HasValue)
+            {
+                Navigation.NavigateTo($"/counter/dashboard/{AuthState.CounterId}", true);
+                return;
+            }
+        }
+
+        try
+        {
+            var dbUsers = await UserRepository.GetAllAsync();
+            users = dbUsers.ToList();
+
+            var dbBranches = await BranchRepository.GetAllAsync();
+            branches = dbBranches.ToList();
+
+            // Dummy Data Fallback if DB is empty
+            if (!users.Any())
+            {
+                GenerateDummyData();
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading data: {ex.Message}";
+            Console.WriteLine($"Error in Login.OnInitializedAsync: {ex}");
+            
+            // Fallback to dummy data on error too, for testing
+            GenerateDummyData();
+        }
+    }
+
+
+
+    private void GenerateDummyData()
+    {
+        // Create dummy branches
+        var branch1 = new QMS.Domain.Entities.Branch { Id = 1, Name = "Saigon Centre Branch", Code = "SGN01" };
+        var branch2 = new QMS.Domain.Entities.Branch { Id = 2, Name = "Hanoi Tower Branch", Code = "HAN01" };
+        branches = new List<QMS.Domain.Entities.Branch> { branch1, branch2 };
+
+        // Create dummy users
+        users = new List<QMS.Domain.Entities.User>
+        {
+            new QMS.Domain.Entities.User { Id = 1, FullName = "Nguyen Van Teller", Role = "Teller", Email = "teller1@scb.com", CurrentBranchId = 1 },
+            new QMS.Domain.Entities.User { Id = 2, FullName = "Tran Thi Teller", Role = "Teller", Email = "teller2@scb.com", CurrentBranchId = 1 },
+            new QMS.Domain.Entities.User { Id = 3, FullName = "Le Van TM", Role = "TM", Email = "tm1@scb.com", CurrentBranchId = 1 },
+            new QMS.Domain.Entities.User { Id = 4, FullName = "Pham Thi TM", Role = "TM", Email = "tm2@scb.com", CurrentBranchId = 2 }
+        };
+    }
+
+    private async Task OnUserSelectedString(string value)
+    {
+        if (int.TryParse(value, out int newId))
+        {
+            selectedUserId = newId;
+            await OnUserSelected();
+        }
+    }
+
+    private async Task OnUserSelected()
+    {
+        selectedCounterId = 0;
+        availableCounters.Clear();
+
+        if (selectedUserId > 0)
+        {
+            selectedUser = users.FirstOrDefault(u => u.Id == selectedUserId);
+            
+            if (selectedUser?.CurrentBranchId != null)
+            {
+                selectedBranchId = selectedUser.CurrentBranchId.Value;
+                selectedBranch = branches.FirstOrDefault(b => b.Id == selectedBranchId);
+                
+                // Load counters for user's branch
+                try 
+                {
+                    var counters = await CounterRepository.FindAsync(c => c.BranchId == selectedBranchId && c.IsActive);
+                    availableCounters = counters.ToList();
+                }
+                catch
+                {
+                    // Fallback dummy counters
+                    if (selectedBranchId == 1)
+                    {
+                        availableCounters = new List<QMS.Domain.Entities.Counter>
+                        {
+                            new QMS.Domain.Entities.Counter { Id = 1, Name = "Counter 1", Prefix = "A", BranchId = 1, IsActive = true },
+                            new QMS.Domain.Entities.Counter { Id = 2, Name = "Counter 2", Prefix = "B", BranchId = 1, IsActive = true },
+                            new QMS.Domain.Entities.Counter { Id = 3, Name = "VIP Counter", Prefix = "V", BranchId = 1, IsActive = true }
+                        };
+                    }
+                }
+            }
+        }
+        else
+        {
+            selectedUser = null;
+            selectedBranch = null;
+            selectedBranchId = 0;
+        }
+    }
+
+
+
+    private string GetRoleBadgeClass(string role)
+    {
+        return role switch
+        {
+            "TM" => "bg-purple text-white",
+            "Teller" => "bg-info text-dark",
+            "Manager" => "bg-danger text-white",
+            _ => "bg-secondary text-white"
+        };
+    }
+
+    private string GetLoginButtonText()
+    {
+        if (selectedUser == null) return "Login";
+        return selectedUser.Role == "TM" ? "Login to Dashboard" : "Open Counter";
+    }
+
+    private async Task HandleLogin()
+    {
+        try
+        {
+            errorMessage = null;
+
+            if (selectedUser == null) return;
+
+            // 1. TM Login Logic
+            if (selectedUser.Role == "TM")
+            {
+                await PerformLogin("TM", null);
+                // Navigate to TM Dashboard
+                Navigation.NavigateTo("/tm/dashboard");
+                return;
+            }
+
+            // 2. Teller Login Logic
+            if (selectedUser.Role == "Teller")
+            {
+                if (selectedCounterId == 0)
+                {
+                    errorMessage = "Please select a counter";
+                    return;
+                }
+
+                // Assign user to counter and set status to Online
+                try {
+                    Console.WriteLine($"[Login] Assigning user {selectedUserId} to counter {selectedCounterId}");
+                    await CounterService.AssignUserToCounterAsync(selectedCounterId, selectedUserId.ToString());
+                    
+                    Console.WriteLine($"[Login] Setting counter {selectedCounterId} status to Online");
+                    // Set counter status to Online
+                    await CounterService.ChangeCounterStatusAsync(selectedCounterId, QMS.Domain.Enums.CounterStatus.Online);
+                    
+                    // Verify the status was updated
+                    var counter = await CounterService.GetCounterByIdAsync(selectedCounterId);
+                    Console.WriteLine($"[Login] Counter {selectedCounterId} status after update: {counter?.Status}");
+                    
+                    if (counter != null)
+                    {
+                        // Send notification to TM Counter Management
+                        Console.WriteLine($"[Login] Sending notification for counter {selectedCounterId}, branch {counter.BranchId}, isActive: true");
+                        await NotificationService.NotifyCounterUpdatedAsync(selectedCounterId, counter.BranchId, true);
+                    }
+                } catch (Exception ex) {
+                    Console.WriteLine($"[Login] Error updating counter: {ex.Message}");
+                    Console.WriteLine($"[Login] Stack trace: {ex.StackTrace}");
+                }
+
+                await PerformLogin("Teller", selectedCounterId);
+                // Navigate to Counter Dashboard
+                Navigation.NavigateTo($"/counter/dashboard/{selectedCounterId}");
+                return;
+            }
+
+            errorMessage = "Unknown role";
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Login failed: {ex.Message}";
+        }
+    }
+
+    private async Task PerformLogin(string role, int? counterId)
+    {
+        // Submit form to controller
+        await JSRuntime.InvokeVoidAsync("submitLoginForm");
+    }
+}

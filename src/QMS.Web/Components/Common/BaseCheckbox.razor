@@ -1,0 +1,88 @@
+<div class="form-check @ContainerClass @SizeClass">
+    <input class="form-check-input @InputClass" 
+           type="checkbox" 
+           id="@UniqueId"
+           checked="@Checked" 
+           @onchange="OnCheckedChanged"
+           disabled="@Disabled">
+    @if (!string.IsNullOrEmpty(Label))
+    {
+        <label class="form-check-label @LabelClass" for="@UniqueId">
+            @Label
+        </label>
+    }
+    @if (ChildContent != null)
+    {
+        <label class="form-check-label @LabelClass" for="@UniqueId">
+            @ChildContent
+        </label>
+    }
+</div>
+
+<style>
+    .form-check-input {
+        width: 1.25rem;
+        height: 1.25rem;
+        border: 2px solid #cbd5e1;
+        border-radius: 6px;
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+
+    .form-check-input:hover:not(:disabled) {
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .form-check-input:checked {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-color: #667eea;
+    }
+
+    .form-check-input:focus {
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+        border-color: #667eea;
+    }
+
+    .form-check-input:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .form-check-label {
+        cursor: pointer;
+        user-select: none;
+        margin-left: 0.5rem;
+    }
+
+    .form-check.check-sm .form-check-input {
+        width: 1rem;
+        height: 1rem;
+    }
+
+    .form-check.check-lg .form-check-input {
+        width: 1.5rem;
+        height: 1.5rem;
+    }
+</style>
+
+@code {
+    [Parameter] public bool Checked { get; set; }
+    [Parameter] public EventCallback<bool> CheckedChanged { get; set; }
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public string InputClass { get; set; } = "";
+    [Parameter] public string LabelClass { get; set; } = "";
+    [Parameter] public string ContainerClass { get; set; } = "";
+    [Parameter] public string Size { get; set; } = "md"; // sm, md, lg
+
+    private string UniqueId = Guid.NewGuid().ToString("N");
+    private string SizeClass => Size != "md" ? $"check-{Size}" : "";
+
+    private async Task OnCheckedChanged(ChangeEventArgs e)
+    {
+        Checked = (bool)(e.Value ?? false);
+        await CheckedChanged.InvokeAsync(Checked);
+    }
+}

@@ -1,0 +1,650 @@
+@page "/branch-display"
+@using QMS.Web.Components.Layout
+@layout DisplayLayout
+@attribute [Microsoft.AspNetCore.Authorization.AllowAnonymous]
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.SignalR.Client
+@using QMS.Domain.Entities
+@using QMS.Domain.Interfaces
+@using QMS.Domain.Enums
+@using QMS.Application.Interfaces
+@inject IRepository<Branch> BranchRepository
+@inject ICounterService CounterService
+@inject ITicketService TicketService
+@inject NavigationManager Navigation
+@inject Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage.ProtectedLocalStorage ProtectedLocalStore
+@inject IServiceScopeFactory ScopeFactory
+@implements IAsyncDisposable
+
+<style>
+    .branch-display-container {
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        background-color: #f5f7fa;
+        font-family: 'Inter', sans-serif;
+    }
+
+    /* Header */
+    .display-header {
+        height: 80px;
+        background: white;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 2rem;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        z-index: 10;
+    }
+
+    .brand-section {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .brand-logo {
+        width: 48px;
+        height: 48px;
+        background: #007bff;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 24px;
+    }
+
+    .brand-text h1 {
+        font-size: 24px;
+        font-weight: 700;
+        margin: 0;
+        color: #1a1a1a;
+        line-height: 1.2;
+    }
+
+    .brand-text p {
+        font-size: 14px;
+        color: #6c757d;
+        margin: 0;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    .time-display {
+        text-align: right;
+    }
+
+    .current-time {
+        font-size: 32px;
+        font-weight: 700;
+        color: #1a1a1a;
+        line-height: 1;
+    }
+
+    .current-date {
+        font-size: 14px;
+        color: #6c757d;
+        text-transform: uppercase;
+        margin-top: 4px;
+    }
+
+    /* Main Content */
+    .display-content {
+        flex: 1;
+        display: grid;
+        grid-template-columns: 1fr 400px;
+        gap: 2rem;
+        padding: 2rem;
+        overflow: hidden;
+    }
+
+    /* Left Side - Media */
+    .media-section {
+        background: #003366;
+        border-radius: 24px;
+        overflow: hidden;
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+        padding: 3rem;
+        color: white;
+        box-shadow: 0 10px 30px rgba(0,51,102,0.3);
+    }
+    
+    .media-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(to bottom, rgba(0,0,0,0) 50%, rgba(0,0,0,0.8) 100%);
+        z-index: 1;
+    }
+    
+    .media-content {
+        position: relative;
+        z-index: 2;
+    }
+
+    .promo-tag {
+        background: #00aaff;
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        font-weight: 700;
+        font-size: 14px;
+        display: inline-block;
+        margin-bottom: 1rem;
+        text-transform: uppercase;
+    }
+
+    .promo-title {
+        font-size: 48px;
+        font-weight: 800;
+        margin-bottom: 1rem;
+        line-height: 1.1;
+    }
+
+    .promo-desc {
+        font-size: 18px;
+        opacity: 0.9;
+        max-width: 600px;
+    }
+
+    /* Right Side - Counters */
+    .counters-section {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+        overflow-y: auto;
+        padding-right: 0.5rem;
+    }
+    
+    .section-title {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.5rem;
+    }
+    
+    .section-title h2 {
+        font-size: 20px;
+        font-weight: 700;
+        color: #1a1a1a;
+        margin: 0;
+    }
+    
+    .live-badge {
+        background: #e6f7ed;
+        color: #00cc66;
+        padding: 0.25rem 0.75rem;
+        border-radius: 50px;
+        font-size: 12px;
+        font-weight: 700;
+        text-transform: uppercase;
+    }
+
+    .counter-card {
+        background: white;
+        border-radius: 16px;
+        padding: 1.5rem;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        border-left: 5px solid transparent;
+        transition: all 0.3s ease;
+    }
+
+    .counter-card.serving {
+        border-left-color: #007bff;
+        transform: scale(1.02);
+        box-shadow: 0 8px 25px rgba(0,123,255,0.15);
+    }
+    
+    .counter-card.available {
+        border-left-color: #28a745;
+    }
+    
+    .counter-card.busy {
+        border-left-color: #ffc107;
+    }
+    
+    .counter-card.closed {
+        border-left-color: #dc3545;
+        opacity: 0.7;
+    }
+
+    .counter-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.5rem;
+    }
+
+    .counter-name {
+        font-size: 14px;
+        font-weight: 700;
+        color: #6c757d;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #ccc;
+    }
+    
+    .serving .status-dot { background: #007bff; box-shadow: 0 0 0 2px rgba(0,123,255,0.2); }
+    .available .status-dot { background: #28a745; }
+    .busy .status-dot { background: #ffc107; }
+    .closed .status-dot { background: #dc3545; }
+
+    .ticket-number {
+        font-size: 48px;
+        font-weight: 800;
+        color: #1a1a1a;
+        line-height: 1;
+        margin: 0.5rem 0;
+    }
+    
+    .serving .ticket-number {
+        color: #007bff;
+    }
+
+    .counter-status-text {
+        font-size: 16px;
+        color: #6c757d;
+        font-style: italic;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .arrow-icon {
+        font-size: 24px;
+        color: #1a1a1a;
+    }
+
+    /* Ticker */
+    .ticker-section {
+        height: 50px;
+        background: white;
+        border-top: 1px solid #e9ecef;
+        display: flex;
+        align-items: center;
+        padding: 0 2rem;
+        overflow: hidden;
+    }
+    
+    .ticker-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-right: 2rem;
+        font-size: 14px;
+        font-weight: 600;
+        color: #495057;
+    }
+    
+    .ticker-value {
+        color: #28a745;
+    }
+    
+    .ticker-value.down {
+        color: #dc3545;
+    }
+
+    /* Setup Screen */
+    .setup-container {
+        height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    }
+
+    .setup-card {
+        background: white;
+        padding: 3rem;
+        border-radius: 24px;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.1);
+        width: 100%;
+        max-width: 500px;
+        text-align: center;
+    }
+</style>
+
+@if (selectedBranchId == 0)
+{
+    <div class="setup-container">
+        <div class="setup-card">
+            <div class="mb-4">
+                <i class="bi bi-display" style="font-size: 48px; color: #007bff;"></i>
+            </div>
+            <h2 class="mb-3">Branch Display Setup</h2>
+            <p class="text-muted mb-4">Select the branch to display counter status</p>
+            
+            @if (branches == null)
+            {
+                <div class="spinner-border text-primary" role="status"></div>
+            }
+            else
+            {
+                <select class="form-select form-select-lg mb-4" @bind="tempSelectedBranchId">
+                    <option value="0">Select Branch</option>
+                    @foreach (var branch in branches)
+                    {
+                        <option value="@branch.Id">@branch.Name</option>
+                    }
+                </select>
+                
+                <button class="btn btn-primary btn-lg w-100" 
+                        @onclick="ConfirmBranchSelection" 
+                        disabled="@(tempSelectedBranchId == 0)">
+                    Start Display
+                </button>
+            }
+        </div>
+    </div>
+}
+else
+{
+    <div class="branch-display-container">
+        <!-- Header -->
+        <div class="display-header">
+            <div class="brand-section">
+                <div class="brand-logo">
+                    <i class="bi bi-bank2"></i>
+                </div>
+                <div class="brand-text">
+                    <h1>Standard Chartered</h1>
+                    <p>@branchName</p>
+                </div>
+            </div>
+            <div class="time-display">
+                <div class="current-time">@currentTime.ToString("hh:mm tt")</div>
+                <div class="current-date">@currentTime.ToString("dddd, MMM dd")</div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="display-content">
+            <!-- Left: Media/Ad -->
+            <div class="media-section">
+                <div class="media-overlay"></div>
+                <div class="media-content">
+                    <span class="promo-tag">New Offer</span>
+                    <h2 class="promo-title">Premium Global Banking</h2>
+                    <p class="promo-desc">Experience borderless transactions with 0% foreign exchange fees on our new Platinum card.</p>
+                </div>
+            </div>
+
+            <!-- Right: Counters -->
+            <div class="counters-section">
+                <div class="section-title">
+                    <h2>Counter Status</h2>
+                    <span class="live-badge">Live Updates</span>
+                </div>
+
+                @if (counters == null)
+                {
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-primary"></div>
+                    </div>
+                }
+                else
+                {
+                    @foreach (var counter in counters.OrderBy(c => c.Name))
+                    {
+                        var ticketNumber = counterTickets.ContainsKey(counter.Id) ? counterTickets[counter.Id] : null;
+                        // Counter is serving if it has a ticket, regardless of whether status is Busy or Online
+                        var isServing = (counter.Status == CounterStatus.Busy || counter.Status == CounterStatus.Online) && !string.IsNullOrEmpty(ticketNumber);
+                        var statusClass = isServing ? "serving" : 
+                                          counter.Status == CounterStatus.Online ? "available" :
+                                          counter.Status == CounterStatus.Busy ? "busy" : "closed";
+
+                        <div class="counter-card @statusClass animate-fade-in">
+                            <div class="counter-header">
+                                <span class="counter-name">@counter.Name</span>
+                                <div class="status-dot"></div>
+                            </div>
+                            
+                            @if (isServing)
+                            {
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <div class="small text-muted">SERVING</div>
+                                        <div class="ticket-number">@ticketNumber</div>
+                                    </div>
+                                    <i class="bi bi-arrow-right-circle arrow-icon"></i>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="counter-status-text mt-2">
+                                    <i class="bi bi-cup-hot"></i>
+                                    <span>
+                                        @(counter.Status == CounterStatus.Online ? "Available" : 
+                                          counter.Status == CounterStatus.Busy ? "Busy" : "Closed")
+                                    </span>
+                                </div>
+                            }
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+
+        <!-- Ticker -->
+        <div class="ticker-section">
+            <div class="ticker-item">
+                <i class="bi bi-graph-up"></i> MARKET
+            </div>
+            <div class="ticker-item">
+                BTC/USD <span class="ticker-value">64,200 ▲</span>
+            </div>
+            <div class="ticker-item">
+                AAPL <span class="ticker-value down">182.40 ▼</span>
+            </div>
+            <div class="ticker-item">
+                SAVINGS APY <span class="ticker-value">7.5%</span>
+            </div>
+            <div class="ticker-item">
+                USD/VND <span class="ticker-value">24,500 ▲</span>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private int selectedBranchId = 0;
+    private int tempSelectedBranchId = 0;
+    private string branchName = "";
+    private IEnumerable<Branch>? branches;
+    private List<Counter>? counters;
+    private Dictionary<int, string> counterTickets = new();
+    private DateTime currentTime = DateTime.Now;
+    private System.Threading.Timer? timer;
+    private HubConnection? hubConnection;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Start clock
+        timer = new System.Threading.Timer(_ =>
+        {
+            currentTime = DateTime.Now;
+            InvokeAsync(StateHasChanged);
+        }, null, 0, 1000);
+
+        // Load branches for setup
+        branches = await BranchRepository.GetAllAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Try restore session
+            var result = await ProtectedLocalStore.GetAsync<int>("branch_display_id");
+            if (result.Success && result.Value > 0)
+            {
+                selectedBranchId = result.Value;
+                await LoadBranchData();
+                StateHasChanged();
+            }
+        }
+    }
+
+    private async Task ConfirmBranchSelection()
+    {
+        if (tempSelectedBranchId > 0)
+        {
+            selectedBranchId = tempSelectedBranchId;
+            await ProtectedLocalStore.SetAsync("branch_display_id", selectedBranchId);
+            await LoadBranchData();
+        }
+    }
+
+    private async Task LoadBranchData()
+    {
+        var branch = await BranchRepository.GetByIdAsync(selectedBranchId);
+        if (branch != null)
+        {
+            branchName = branch.Name;
+            
+            // Load counters
+            using (var scope = ScopeFactory.CreateScope())
+            {
+                var scopedCounterService = scope.ServiceProvider.GetRequiredService<ICounterService>();
+                var scopedTicketService = scope.ServiceProvider.GetRequiredService<ITicketService>();
+                
+                var loadedCounters = await scopedCounterService.GetCountersByBranchAsync(selectedBranchId);
+                counters = loadedCounters.ToList();
+                
+                // Load current tickets for each counter
+                counterTickets.Clear();
+                foreach (var counter in counters)
+                {
+                    if (counter.CurrentTicketId.HasValue)
+                    {
+                        var ticket = await scopedTicketService.GetTicketByIdAsync(counter.CurrentTicketId.Value);
+                        if (ticket != null)
+                        {
+                            counterTickets[counter.Id] = ticket.TicketNumber;
+                        }
+                    }
+                }
+            }
+
+            await SetupSignalR();
+        }
+    }
+
+    private async Task SetupSignalR()
+    {
+        if (hubConnection != null) return;
+
+        hubConnection = new HubConnectionBuilder()
+            .WithUrl(Navigation.ToAbsoluteUri("/qmshub"))
+            .WithAutomaticReconnect()
+            .Build();
+
+        // Listen for updates
+        hubConnection.On<int>("CounterUpdated", async (counterId) => 
+        {
+            await ReloadCounter(counterId);
+        });
+
+        hubConnection.On<int, string>("CounterStatusChanged", async (counterId, status) => 
+        {
+            await ReloadCounter(counterId);
+        });
+        
+        hubConnection.On<int>("TicketUpdated", async (counterId) => 
+        {
+            await ReloadCounter(counterId);
+        });
+
+        await hubConnection.StartAsync();
+        
+        // Join Branch Group
+        await hubConnection.InvokeAsync("JoinBranchGroup", selectedBranchId);
+        
+        // Join Counter Groups (to receive status updates)
+        if (counters != null)
+        {
+            foreach (var counter in counters)
+            {
+                await hubConnection.InvokeAsync("JoinCounterGroup", counter.Id);
+            }
+        }
+    }
+
+    private async Task ReloadCounter(int counterId)
+    {
+        using (var scope = ScopeFactory.CreateScope())
+        {
+            var scopedCounterService = scope.ServiceProvider.GetRequiredService<ICounterService>();
+            var scopedTicketService = scope.ServiceProvider.GetRequiredService<ITicketService>();
+            
+            var updatedCounter = await scopedCounterService.GetCounterByIdAsync(counterId);
+            
+            await InvokeAsync(() => 
+            {
+                if (updatedCounter != null && counters != null)
+                {
+                    var index = counters.FindIndex(c => c.Id == counterId);
+                    if (index != -1)
+                    {
+                        counters[index] = updatedCounter;
+                    }
+                    else if (updatedCounter.BranchId == selectedBranchId)
+                    {
+                        counters.Add(updatedCounter);
+                    }
+                }
+            });
+            
+            // Update ticket info
+            if (updatedCounter != null && updatedCounter.CurrentTicketId.HasValue)
+            {
+                var ticket = await scopedTicketService.GetTicketByIdAsync(updatedCounter.CurrentTicketId.Value);
+                await InvokeAsync(() => 
+                {
+                    if (ticket != null)
+                    {
+                        counterTickets[counterId] = ticket.TicketNumber;
+                    }
+                    else
+                    {
+                        counterTickets.Remove(counterId);
+                    }
+                    StateHasChanged();
+                });
+            }
+            else
+            {
+                await InvokeAsync(() => 
+                {
+                    counterTickets.Remove(counterId);
+                    StateHasChanged();
+                });
+            }
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (timer != null)
+        {
+            timer.Dispose();
+        }
+        
+        if (hubConnection != null)
+        {
+            await hubConnection.DisposeAsync();
+        }
+    }
+}

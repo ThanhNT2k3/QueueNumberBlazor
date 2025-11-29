@@ -1,0 +1,34 @@
+<div class="base-accordion @ContainerClass">
+    @ChildContent
+</div>
+
+<style>
+    .base-accordion {
+        border-radius: 12px;
+        overflow: hidden;
+    }
+</style>
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public string ContainerClass { get; set; } = "";
+    [Parameter] public bool AllowMultiple { get; set; } = false;
+
+    private List<BaseAccordionItem> items = new();
+
+    internal void RegisterItem(BaseAccordionItem item)
+    {
+        items.Add(item);
+    }
+
+    internal void OnItemToggled(BaseAccordionItem toggledItem)
+    {
+        if (!AllowMultiple && toggledItem.IsExpanded)
+        {
+            foreach (var item in items.Where(i => i != toggledItem && i.IsExpanded))
+            {
+                item.Collapse();
+            }
+        }
+    }
+}

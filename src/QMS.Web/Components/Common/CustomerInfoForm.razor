@@ -1,0 +1,59 @@
+@using QMS.Domain.Entities
+
+<div class="customer-info-section mb-4">
+    <h6 class="mb-3 fw-bold text-start">Customer Information (Optional)</h6>
+    <div class="row g-3">
+        <div class="col-md-6">
+            <BaseInput Placeholder="Phone Number" 
+                      Value="@Ticket.CustomerPhone" 
+                      ValueChanged="UpdatePhone" />
+        </div>
+        <div class="col-md-6">
+            <BaseInput Placeholder="Email" 
+                      Value="@Ticket.CustomerEmail" 
+                      ValueChanged="UpdateEmail" />
+        </div>
+        <div class="col-12">
+            <BaseInput Placeholder="Customer Notes..." 
+                      Value="@Ticket.CustomerNotes" 
+                      ValueChanged="UpdateNotes"
+                      Rows="2" />
+        </div>
+    </div>
+</div>
+
+<style>
+    .customer-info-section {
+        background: #f8fafc;
+        border-radius: 16px;
+        padding: 1.5rem;
+        border: 2px dashed #cbd5e1;
+        max-width: 800px;
+        margin: 0 auto;
+    }
+
+
+</style>
+
+@code {
+    [Parameter] public Ticket Ticket { get; set; } = new();
+    [Parameter] public EventCallback<Ticket> TicketChanged { get; set; }
+
+    private async Task UpdatePhone(string? value)
+    {
+        Ticket.CustomerPhone = value;
+        await TicketChanged.InvokeAsync(Ticket);
+    }
+
+    private async Task UpdateEmail(string? value)
+    {
+        Ticket.CustomerEmail = value;
+        await TicketChanged.InvokeAsync(Ticket);
+    }
+
+    private async Task UpdateNotes(string? value)
+    {
+        Ticket.CustomerNotes = value;
+        await TicketChanged.InvokeAsync(Ticket);
+    }
+}

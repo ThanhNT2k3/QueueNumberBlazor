@@ -1,0 +1,41 @@
+<div class="ticket-display">
+    <div class="text-muted small mb-2">@Label</div>
+    <div class="ticket-number">@TicketNumber</div>
+    <div class="service-name">@ServiceName</div>
+    @if (ChildContent != null)
+    {
+        <div class="mt-4">
+            @ChildContent
+        </div>
+    }
+</div>
+
+<style>
+    .ticket-display {
+        text-align: center;
+    }
+
+    .ticket-number {
+        font-size: 120px;
+        font-weight: 800;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        line-height: 1;
+        margin: 2rem 0;
+    }
+
+    .service-name {
+        color: #64748b;
+        font-size: 18px;
+        margin-bottom: 3rem;
+    }
+</style>
+
+@code {
+    [Parameter] public string TicketNumber { get; set; } = "";
+    [Parameter] public string ServiceName { get; set; } = "";
+    [Parameter] public string Label { get; set; } = "SERVING";
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

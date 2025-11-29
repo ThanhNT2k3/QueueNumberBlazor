@@ -1,0 +1,45 @@
+<div class="form-group @ContainerClass">
+    @if (!string.IsNullOrEmpty(Label))
+    {
+        <label class="form-label fw-semibold text-secondary small text-uppercase mb-1">@Label</label>
+    }
+    <input type="date" 
+           class="form-control @InputClass" 
+           value="@(Value.ToString("yyyy-MM-dd"))" 
+           @onchange="OnValueChanged"
+           disabled="@Disabled" />
+</div>
+
+<style>
+    .form-control {
+        border-radius: 10px;
+        border: 2px solid #e2e8f0;
+        padding: 0.75rem 1rem;
+        font-size: 14px;
+        transition: all 0.3s ease;
+    }
+
+    .form-control:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        outline: none;
+    }
+</style>
+
+@code {
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public DateTime Value { get; set; }
+    [Parameter] public EventCallback<DateTime> ValueChanged { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public string InputClass { get; set; } = "";
+    [Parameter] public string ContainerClass { get; set; } = "mb-3";
+
+    private async Task OnValueChanged(ChangeEventArgs e)
+    {
+        if (DateTime.TryParse(e.Value?.ToString(), out DateTime newValue))
+        {
+            Value = newValue;
+            await ValueChanged.InvokeAsync(Value);
+        }
+    }
+}

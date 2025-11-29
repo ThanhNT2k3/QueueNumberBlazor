@@ -1,0 +1,1163 @@
+@page "/counter/dashboard/{CounterId:int}"
+@using Microsoft.AspNetCore.Components.Authorization
+@using QMS.Domain.Enums
+@using Microsoft.AspNetCore.SignalR.Client
+@rendermode InteractiveServer
+@layout Layout.CounterLayout
+@inject ITicketService TicketService
+@inject ICounterService CounterService
+@inject QMS.Application.Interfaces.IQmsNotificationService NotificationService
+@inject NavigationManager Navigation
+@inject QMS.Web.Services.AuthenticationStateService AuthState
+@inject ILogger<Dashboard> Logger
+@implements IAsyncDisposable
+
+<style>
+    .counter-dashboard {
+        background: white;
+        min-height: 100vh;
+        padding: 2rem;
+    }
+
+    /* Counter Info Header */
+    .counter-info-header {
+        background: white;
+        border-radius: 16px;
+        padding: 1.25rem 1.5rem;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    }
+
+    .counter-badge {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 0.5rem 1.25rem;
+        border-radius: 12px;
+        font-weight: 600;
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+    }
+
+    .status-indicator {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+    }
+
+    .status-indicator.online {
+        background: #d1fae5;
+        color: #065f46;
+    }
+
+    .status-indicator.online i {
+        color: #10b981;
+        font-size: 8px;
+        animation: pulse-dot 2s ease-in-out infinite;
+    }
+
+    .status-indicator.offline {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .status-indicator.busy {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .status-indicator.break {
+        background: #e0e7ff;
+        color: #4338ca;
+    }
+
+    .status-dropdown {
+        position: relative;
+        cursor: pointer;
+    }
+
+    .status-dropdown-backdrop {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: transparent;
+        z-index: 999;
+    }
+
+    .status-dropdown-menu {
+        position: absolute;
+        top: 100%;
+        right: 0;
+        margin-top: 0.5rem;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+        min-width: 180px;
+        z-index: 1000;
+        overflow: hidden;
+    }
+
+    .status-dropdown-item {
+        padding: 0.75rem 1rem;
+        cursor: pointer;
+        transition: background 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 13px;
+        font-weight: 600;
+    }
+
+    .status-dropdown-item:hover {
+        background: #f8fafc;
+    }
+
+    @@keyframes pulse-dot {
+        0%, 100% {
+            opacity: 1;
+        }
+        50% {
+            opacity: 0.5;
+        }
+    }
+
+
+
+
+    .service-card {
+        background: white;
+        border-radius: 20px;
+        padding: 3rem;
+        box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+
+
+
+    .action-buttons {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        max-width: 900px;
+        margin: 0 auto;
+    }
+
+    .action-btn {
+        padding: 1.25rem 2rem;
+        border: none;
+        border-radius: 12px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+    }
+
+    .action-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+    }
+
+    .btn-recall {
+        background: #3b82f6;
+        color: white;
+    }
+
+    .btn-recall:hover {
+        background: #2563eb;
+    }
+
+    .btn-complete {
+        background: #10b981;
+        color: white;
+    }
+
+    .btn-complete:hover {
+        background: #059669;
+    }
+
+    .btn-transfer {
+        background: #f59e0b;
+        color: white;
+    }
+
+    .btn-transfer:hover {
+        background: #d97706;
+    }
+
+    .btn-absent {
+        background: #fbbf24;
+        color: #78350f;
+    }
+
+    .btn-absent:hover {
+        background: #f59e0b;
+    }
+
+    .btn-call-next {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 1.5rem 3rem;
+        border: none;
+        border-radius: 50px;
+        font-size: 18px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-call-next:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 12px 30px rgba(102, 126, 234, 0.5);
+    }
+
+    .sidebar {
+        background: white;
+        border-radius: 20px;
+        padding: 1.5rem;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        max-height: calc(100vh - 8rem);
+        overflow-y: auto;
+    }
+    .history-list { max-height: 300px; overflow-y: auto; }
+
+    .sidebar-header {
+        font-size: 14px;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: #64748b;
+        margin-bottom: 1rem;
+        padding-bottom: 1rem;
+        border-bottom: 2px solid #e2e8f0;
+    }
+
+    .ticket-item {
+        background: #f8fafc;
+        border-radius: 12px;
+        padding: 1rem;
+        margin-bottom: 0.75rem;
+        border-left: 4px solid #667eea;
+    }
+
+    .ticket-item-number {
+        font-size: 18px;
+        font-weight: 700;
+        color: #1e293b;
+    }
+
+    .ticket-item-time {
+        background: #e0e7ff;
+        color: #4338ca;
+        padding: 4px 10px;
+        border-radius: 8px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .ticket-item-service {
+        color: #64748b;
+        font-size: 14px;
+        margin-top: 0.5rem;
+    }
+
+    .waiting-count {
+        color: #94a3b8;
+        font-size: 14px;
+        margin-top: 1rem;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 3rem 1rem;
+        color: #94a3b8;
+    }
+
+    .empty-state i {
+        font-size: 64px;
+        margin-bottom: 1rem;
+        opacity: 0.3;
+    }
+
+    /* History Modal Styles */
+    .history-ticket-card {
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 1.25rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .history-ticket-card:hover {
+        border-color: #667eea;
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+        transform: translateY(-2px);
+    }
+
+    /* Ticket Details Modal */
+    .ticket-details-modal {
+        border-radius: 16px;
+        border: none;
+    }
+
+    .ticket-details-modal .modal-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 16px 16px 0 0;
+        padding: 1.5rem;
+    }
+
+    .ticket-details-modal .modal-header .btn-close {
+        filter: brightness(0) invert(1);
+    }
+
+    .detail-label {
+        display: block;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #94a3b8;
+        margin-bottom: 0.5rem;
+        font-weight: 600;
+    }
+
+    .detail-value {
+        font-size: 16px;
+        font-weight: 600;
+        color: #1e293b;
+    }
+
+    /* Status Badges */
+    .status-badge {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .badge-waiting {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .badge-called {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+
+    .badge-serving {
+        background: #e0e7ff;
+        color: #4338ca;
+    }
+
+    .badge-completed {
+        background: #d1fae5;
+        color: #065f46;
+    }
+
+    .badge-missed {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .badge-cancelled {
+        background: #e0e7ff;
+        color: #5b21b6;
+    }
+
+    .badge-secondary {
+        background: #f1f5f9;
+        color: #475569;
+    }
+</style>
+
+<div class="counter-dashboard">
+    <div class="container-fluid">
+        <!-- Counter Info Header -->
+        <div class="counter-info-header mb-4">
+            <div class="d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="counter-badge">
+                        <i class="bi bi-shop"></i>
+                        <span class="ms-2">@counter?.Name</span>
+                    </div>
+                    <div class="status-dropdown" style="position: relative;">
+                        @if (showStatusDropdown)
+                        {
+                            <div class="status-dropdown-backdrop" @onclick="ToggleStatusDropdown"></div>
+                        }
+                        <div @onclick="ToggleStatusDropdown">
+                            <div class="status-indicator @GetStatusClass(counter?.Status ?? CounterStatus.Offline)">
+                                <i class="bi bi-circle-fill"></i>
+                                <span>@GetStatusText(counter?.Status ?? CounterStatus.Offline)</span>
+                                <i class="bi bi-chevron-down ms-1" style="font-size: 10px;"></i>
+                            </div>
+                        </div>
+                        @if (showStatusDropdown)
+                        {
+                            <div class="status-dropdown-menu" @onclick:stopPropagation="true">
+                                <div class="status-dropdown-item" @onclick="() => ChangeStatus(CounterStatus.Online)">
+                                    <i class="bi bi-circle-fill" style="color: #10b981; font-size: 8px;"></i>
+                                    <span>Online</span>
+                                </div>
+                                <div class="status-dropdown-item" @onclick="() => ChangeStatus(CounterStatus.Busy)">
+                                    <i class="bi bi-circle-fill" style="color: #f59e0b; font-size: 8px;"></i>
+                                    <span>Busy</span>
+                                </div>
+                                <div class="status-dropdown-item" @onclick="() => ChangeStatus(CounterStatus.Break)">
+                                    <i class="bi bi-circle-fill" style="color: #6366f1; font-size: 8px;"></i>
+                                    <span>Break</span>
+                                </div>
+                                <div class="status-dropdown-item" @onclick="() => ChangeStatus(CounterStatus.Offline)">
+                                    <i class="bi bi-circle-fill" style="color: #ef4444; font-size: 8px;"></i>
+                                    <span>Offline</span>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+                <div class="text-muted small">
+                    <i class="bi bi-clock me-1"></i>
+                    @DateTime.Now.ToString("HH:mm")
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-lg-9">
+                <!-- Service Card -->
+                @if (currentTicket != null)
+                {
+                    <div class="service-card">
+                        <TicketDisplay TicketNumber="@currentTicket.TicketNumber" 
+                                       ServiceName="@currentTicket.ServiceType?.Name">
+                            <CustomerInfoForm @bind-Ticket="currentTicket" />
+                        </TicketDisplay>
+                        
+                        <div class="action-buttons">
+                            <button class="action-btn btn-recall" @onclick="RecallTicket">
+                                <i class="bi bi-arrow-counterclockwise"></i>
+                                Recall
+                            </button>
+                            <button class="action-btn btn-complete" @onclick="CompleteTicket">
+                                <i class="bi bi-check-circle"></i>
+                                Complete
+                            </button>
+                            <button class="action-btn btn-transfer" @onclick="TransferTicket">
+                                <i class="bi bi-arrow-left-right"></i>
+                                Transfer
+                            </button>
+                            <button class="action-btn btn-absent" @onclick="MissTicket">
+                                <i class="bi bi-person-x"></i>
+                                Customer Absent
+                            </button>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="service-card">
+                        <div class="empty-state">
+                            <i class="bi bi-cup-hot"></i>
+                            <h4 class="mb-3">Counter Available</h4>
+                            <button class="btn-call-next" @onclick="CallNext">
+                                <i class="bi bi-megaphone me-2"></i>
+                                Call Next Customer
+                            </button>
+                            <div class="waiting-count mt-3">
+                                @(waitingTickets?.Count() ?? 0) customers waiting
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <!-- Sidebar -->
+            <div class="col-lg-3">
+                <div class="sidebar">
+                    <div class="sidebar-header d-flex justify-content-between align-items-center">
+                        <span>Service History</span>
+                        <button class="btn btn-sm btn-link text-primary p-0" @onclick="OpenHistoryModal">
+                            <i class="bi bi-arrows-fullscreen"></i>
+                        </button>
+                    </div>
+                    @if (historyTickets == null)
+                    {
+                        <div class="text-center text-muted py-4">Loading...</div>
+                    }
+                    else if (!historyTickets.Any())
+                    {
+                        <div class="empty-state">
+                            <i class="bi bi-inbox"></i>
+                            <div>No tickets waiting</div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="history-list">
+                            @foreach (var ticket in historyTickets?.OrderByDescending(x => x.CreatedAt))
+                            {
+                                <div class="ticket-item" @onclick="() => ShowTicketDetails(ticket)" style="cursor: pointer;">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <div class="ticket-item-number">@ticket.TicketNumber</div>
+                                        <span class="ticket-item-time">@ticket.CreatedAt.ToLocalTime().ToString("HH:mm")</span>
+                                    </div>
+                                    <div class="ticket-item-service">@ticket.ServiceType?.Name</div>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+            </div>
+
+    </div>
+</div>
+
+@code {
+    [Parameter] public int CounterId { get; set; }
+    private Counter? counter;
+    private Ticket? currentTicket;
+    private IEnumerable<Ticket>? historyTickets;
+    private IEnumerable<Ticket>? waitingTickets;
+    private HubConnection? hubConnection;
+    private bool showStatusDropdown = false;
+
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            Logger.LogInformation("[Dashboard] OnInitializedAsync - CounterId: {CounterId}", CounterId);
+            
+            // Note: We cannot redirect here reliably because we might need to restore session from LocalStorage first,
+            // which is only available in OnAfterRenderAsync.
+            
+            if (AuthState.IsAuthenticated && AuthState.CounterId.HasValue)
+            {
+                 // Prevent user from accessing other counters by changing URL
+                if (AuthState.CounterId.Value != CounterId)
+                {
+                    Logger.LogWarning("[Dashboard] Counter mismatch - User: {AuthCounterId}, URL: {CounterId}", AuthState.CounterId.Value, CounterId);
+                    Navigation.NavigateTo($"/counter/dashboard/{AuthState.CounterId.Value}", true);
+                    return;
+                }
+
+                Logger.LogInformation("[Dashboard] Loading counter...");
+                counter = await CounterService.GetCounterByIdAsync(CounterId);
+                if (counter == null)
+                {
+                    Logger.LogWarning("[Dashboard] Counter not found");
+                    Navigation.NavigateTo("/login", true);
+                    return;
+                }
+
+                Logger.LogInformation("[Dashboard] Loading data...");
+                await LoadData();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "[Dashboard] ERROR in OnInitializedAsync: {Message}", ex.Message);
+            StateHasChanged();
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Restore session if not authenticated
+            if (!AuthState.IsAuthenticated)
+            {
+                Navigation.NavigateTo("/login", true);
+                return;
+            }
+        }
+
+        if (counter != null && hubConnection == null)
+        {
+            try
+            {
+                // Setup SignalR connection
+                hubConnection = new HubConnectionBuilder()
+                    .WithUrl(Navigation.ToAbsoluteUri("/qmshub"))
+                    .WithAutomaticReconnect()
+                    .Build();
+
+                hubConnection.On<int>("TicketUpdated", async (counterId) =>
+                {
+                    if (counterId == CounterId)
+                    {
+                        await InvokeAsync(async () =>
+                        {
+                            await LoadData();
+                            StateHasChanged();
+                        });
+                    }
+                });
+
+                hubConnection.On<int>("CounterUpdated", async (counterId) =>
+                {
+                    Logger.LogInformation("[Dashboard] CounterUpdated received for {CounterId}", counterId);
+                    if (counterId == CounterId)
+                    {
+                        await InvokeAsync(async () =>
+                        {
+                            Logger.LogInformation("[Dashboard] Reloading counter {CounterId}", counterId);
+                            counter = await CounterService.GetCounterByIdAsync(counterId);
+                            await LoadData();
+                            StateHasChanged();
+                        });
+                    }
+                });
+
+                hubConnection.On<int, string>("CounterStatusChanged", async (counterId, status) =>
+                {
+                    Logger.LogInformation("[Dashboard] CounterStatusChanged received for {CounterId}, Status: {Status}", counterId, status);
+                    if (counterId == CounterId)
+                    {
+                        await InvokeAsync(async () =>
+                        {
+                            Logger.LogInformation("[Dashboard] Updating counter status to {Status}", status);
+                            counter = await CounterService.GetCounterByIdAsync(counterId);
+                            Logger.LogInformation("[Dashboard] Counter reloaded. New status: {Status}", counter?.Status);
+                            StateHasChanged();
+                        });
+                    }
+                });
+
+                await hubConnection.StartAsync();
+                Logger.LogInformation("[Dashboard] Connected to SignalR. Joining group counter_{CounterId}", CounterId);
+                await hubConnection.InvokeAsync("JoinCounterGroup", CounterId);
+                Logger.LogInformation("[Dashboard] Successfully joined counter_{CounterId}", CounterId);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error connecting to SignalR: {Message}", ex.Message);
+            }
+        }
+    }
+
+    public class SessionData
+    {
+        public int UserId { get; set; }
+        public string UserName { get; set; } = "";
+        public string UserRole { get; set; } = "";
+        public int CounterId { get; set; }
+        public int BranchId { get; set; }
+        public string? BranchName { get; set; }
+    }
+
+    private async Task LoadData()
+    {
+        if (counter != null)
+        {
+            Logger.LogInformation("[Dashboard] LoadData - Reloading counter {CounterId}", counter.Id);
+            // Reload counter to get latest status
+            counter = await CounterService.GetCounterByIdAsync(counter.Id);
+            Logger.LogInformation("[Dashboard] Counter {CounterId} reloaded - Status: {Status}, IsActive: {IsActive}", 
+                counter?.Id, counter?.Status, counter?.IsActive);
+            
+            if (counter != null && counter.CurrentTicketId.HasValue)
+            {
+                currentTicket = await TicketService.GetTicketByIdAsync(counter.CurrentTicketId.Value);
+            }
+            else
+            {
+                currentTicket = null;
+            }
+            historyTickets = await TicketService.GetTicketHistoryByCounterAsync(counter.Id);
+            waitingTickets = await TicketService.GetWaitingTicketsAsync(counter.BranchId, counter.Id);
+        }
+    }
+
+    private async Task CallNext()
+    {
+        int? staffId = string.IsNullOrEmpty(AuthState.UserId) ? null : int.Parse(AuthState.UserId);
+        var ticket = await TicketService.CallNextTicketAsync(CounterId, staffId);
+        if (ticket != null)
+        {
+            counter!.CurrentTicketId = ticket.Id;
+            await LoadData();
+            await NotificationService.NotifyTicketUpdatedAsync(counter.BranchId, CounterId);
+        }
+    }
+
+    private async Task CompleteTicket()
+    {
+        if (currentTicket != null)
+        {
+            // Save customer information before completing
+            await TicketService.UpdateTicketInfoAsync(
+                currentTicket.Id,
+                currentTicket.CustomerPhone,
+                currentTicket.CustomerEmail, 
+                currentTicket.CustomerNotes, 
+                null
+            );
+            
+            await TicketService.CompleteTicketAsync(currentTicket.Id);
+            counter!.CurrentTicketId = null;
+            await LoadData();
+            await NotificationService.NotifyTicketUpdatedAsync(counter.BranchId, CounterId);
+        }
+    }
+
+    private async Task RecallTicket()
+    {
+        if (currentTicket != null)
+        {
+            await TicketService.RecallTicketAsync(currentTicket.Id);
+            await LoadData();
+            StateHasChanged();
+        }
+    }
+
+    private async Task MissTicket()
+    {
+        if (currentTicket != null)
+        {
+            await TicketService.MissTicketAsync(currentTicket.Id);
+            counter!.CurrentTicketId = null;
+            await LoadData();
+            await NotificationService.NotifyTicketUpdatedAsync(counter.BranchId, CounterId);
+        }
+    }
+
+    private bool showTransferModal = false;
+    private int transferTargetCounterId;
+    private IEnumerable<Counter>? availableCounters;
+
+    private async Task TransferTicket()
+    {
+        if (counter != null)
+        {
+            availableCounters = (await CounterService.GetCountersByBranchAsync(counter.BranchId))
+                                .Where(c => c.Id != CounterId && c.IsActive);
+            showTransferModal = true;
+        }
+    }
+
+    private void CloseTransferModal()
+    {
+        showTransferModal = false;
+    }
+
+    private async Task ConfirmTransfer()
+    {
+        if (currentTicket != null && transferTargetCounterId > 0)
+        {
+            await TicketService.TransferTicketAsync(currentTicket.Id, transferTargetCounterId, "Transferred by staff");
+            counter!.CurrentTicketId = null;
+            showTransferModal = false;
+            await LoadData();
+            await NotificationService.NotifyTicketUpdatedAsync(counter.BranchId, CounterId);
+            await NotificationService.NotifyTicketUpdatedAsync(counter.BranchId, transferTargetCounterId);
+        }
+    }
+
+    // History Modal
+    private bool showHistoryModal = false;
+    private IEnumerable<Ticket>? allHistoryTickets;
+    private IEnumerable<Ticket>? filteredHistoryTickets;
+    private string searchQuery = "";
+
+    private async Task OpenHistoryModal()
+    {
+        if (counter != null)
+        {
+            allHistoryTickets = await TicketService.GetTicketHistoryByCounterAsync(counter.Id);
+            filteredHistoryTickets = allHistoryTickets;
+            showHistoryModal = true;
+        }
+    }
+
+    private void CloseHistoryModal()
+    {
+        showHistoryModal = false;
+        searchQuery = "";
+    }
+
+    private void FilterHistory()
+    {
+        if (string.IsNullOrWhiteSpace(searchQuery))
+        {
+            filteredHistoryTickets = allHistoryTickets;
+        }
+        else
+        {
+            var query = searchQuery.ToLower();
+            filteredHistoryTickets = allHistoryTickets?.Where(t =>
+                t.TicketNumber.ToLower().Contains(query) ||
+                (t.CustomerPhone != null && t.CustomerPhone.Contains(query)) ||
+                (t.CustomerEmail != null && t.CustomerEmail.ToLower().Contains(query)) ||
+                (t.CustomerName != null && t.CustomerName.ToLower().Contains(query))
+            );
+        }
+    }
+
+    // Ticket Details Modal
+    private bool showTicketDetailsModal = false;
+    private Ticket? selectedTicket;
+
+    private void ShowTicketDetails(Ticket ticket)
+    {
+        selectedTicket = ticket;
+        showTicketDetailsModal = true;
+    }
+
+    private void CloseTicketDetailsModal()
+    {
+        showTicketDetailsModal = false;
+        selectedTicket = null;
+    }
+
+    private string GetStatusBadgeClass(TicketStatus status)
+    {
+        return status switch
+        {
+            TicketStatus.Waiting => "badge-waiting",
+            TicketStatus.Called => "badge-called",
+            TicketStatus.Serving => "badge-serving",
+            TicketStatus.Completed => "badge-completed",
+            TicketStatus.Missed => "badge-missed",
+            TicketStatus.Cancelled => "badge-cancelled",
+            _ => "badge-secondary"
+        };
+    }
+
+    private string GetStatusText(TicketStatus status)
+    {
+        return status switch
+        {
+            TicketStatus.Waiting => "Đang chờ",
+            TicketStatus.Called => "Đã gọi",
+            TicketStatus.Serving => "Đang phục vụ",
+            TicketStatus.Completed => "Hoàn thành",
+            TicketStatus.Missed => "Vắng mặt",
+            TicketStatus.Cancelled => "Đã hủy",
+            _ => status.ToString()
+        };
+    }
+
+
+    private void ToggleStatusDropdown()
+    {
+        showStatusDropdown = !showStatusDropdown;
+    }
+
+    private async Task ChangeStatus(CounterStatus newStatus)
+    {
+        if (counter != null)
+        {
+            Logger.LogInformation("[Dashboard] ChangeStatus called. Counter: {CounterId}, Old Status: {OldStatus}, New Status: {NewStatus}", counter.Id, counter.Status, newStatus);
+            await CounterService.ChangeCounterStatusAsync(counter.Id, newStatus);
+            counter.Status = newStatus;
+            
+            // Determine if counter is active based on status
+            bool isActive = newStatus == CounterStatus.Online || newStatus == CounterStatus.Busy;
+            
+            showStatusDropdown = false;
+            StateHasChanged(); // Force UI update to close dropdown immediately
+            
+            Logger.LogInformation("[Dashboard] Sending notifications for counter {CounterId}, BranchId: {BranchId}, IsActive: {IsActive}", counter.Id, counter.BranchId, isActive);
+            
+            // Send to counter group (for Display screen)
+            await NotificationService.NotifyCounterStatusChangedAsync(counter.Id, newStatus.ToString());
+            
+            // Send to branch group (for TM Counter Management)
+            await NotificationService.NotifyCounterUpdatedAsync(counter.Id, counter.BranchId, isActive);
+            
+            Logger.LogInformation("[Dashboard] Notifications sent successfully");
+        }
+    }
+
+    private string GetStatusClass(CounterStatus status)
+    {
+        return status switch
+        {
+            CounterStatus.Online => "online",
+            CounterStatus.Offline => "offline",
+            CounterStatus.Busy => "busy",
+            CounterStatus.Break => "break",
+            _ => "offline"
+        };
+    }
+
+    private string GetStatusText(CounterStatus status)
+    {
+        return status switch
+        {
+            CounterStatus.Online => "ONLINE",
+            CounterStatus.Offline => "OFFLINE",
+            CounterStatus.Busy => "BUSY",
+            CounterStatus.Break => "BREAK",
+            _ => "OFFLINE"
+        };
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (hubConnection is not null)
+        {
+            await hubConnection.InvokeAsync("LeaveCounterGroup", CounterId);
+            await hubConnection.DisposeAsync();
+        }
+    }
+}
+
+@* Transfer Modal *@
+@if (showTransferModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="border-radius: 16px; border: none;">
+                <div class="modal-header" style="border-bottom: 2px solid #e2e8f0;">
+                    <h5 class="modal-title fw-bold">Transfer Ticket</h5>
+                    <button type="button" class="btn-close" @onclick="CloseTransferModal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <p class="mb-3">Select a counter to transfer ticket <strong class="text-primary">@currentTicket?.TicketNumber</strong> to:</p>
+                    <select class="form-select form-select-lg" @bind="transferTargetCounterId" style="border-radius: 12px;">
+                        <option value="0">-- Select Counter --</option>
+                        @if (availableCounters != null)
+                        {
+                            foreach (var c in availableCounters)
+                            {
+                                <option value="@c.Id">@c.Name</option>
+                            }
+                        }
+                    </select>
+                </div>
+                <div class="modal-footer" style="border-top: 2px solid #e2e8f0;">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseTransferModal" style="border-radius: 10px; padding: 0.75rem 1.5rem;">Cancel</button>
+                    <button type="button" class="btn btn-primary" @onclick="ConfirmTransfer" disabled="@(transferTargetCounterId == 0)" style="border-radius: 10px; padding: 0.75rem 1.5rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none;">Transfer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@* History Modal *@
+@if (showHistoryModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5); z-index: 1050;">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content" style="border-radius: 20px; border: none; max-height: 90vh; display: flex; flex-direction: column;">
+                <div class="modal-header" style="border-bottom: 2px solid #e2e8f0; padding: 1.5rem;">
+                    <h5 class="modal-title fw-bold">
+                        <i class="bi bi-clock-history me-2"></i>
+                        Ticket History
+                    </h5>
+                    <button type="button" class="btn-close" @onclick="CloseHistoryModal"></button>
+                </div>
+                <div class="modal-body p-4" style="overflow-y: auto;">
+                    <div class="mb-4">
+                        <div class="input-group input-group-lg">
+                            <span class="input-group-text" style="background: #f8fafc; border-right: none; border-radius: 12px 0 0 12px;">
+                                <i class="bi bi-search"></i>
+                            </span>
+                            <input type="text" 
+                                   class="form-control" 
+                                   placeholder="Search by ticket number, phone, email, or name..." 
+                                   @bind="searchQuery" 
+                                   @bind:event="oninput"
+                                   @onkeyup="FilterHistory"
+                                   style="border-left: none; border-radius: 0 12px 12px 0; background: #f8fafc;">
+                        </div>
+                    </div>
+
+                    @if (filteredHistoryTickets == null || !filteredHistoryTickets.Any())
+                    {
+                        <div class="text-center py-5">
+                            <i class="bi bi-inbox" style="font-size: 64px; color: #cbd5e1;"></i>
+                            <p class="text-muted mt-3">No tickets found</p>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="row g-3">
+                            @foreach (var ticket in filteredHistoryTickets)
+                            {
+                                <div class="col-12">
+                                    <div class="history-ticket-card" @onclick="() => ShowTicketDetails(ticket)">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div class="flex-grow-1">
+                                                <div class="d-flex align-items-center gap-3 mb-2">
+                                                    <h6 class="mb-0 fw-bold text-primary">@ticket.TicketNumber</h6>
+                                                    <span class="status-badge @GetStatusBadgeClass(ticket.Status)">
+                                                        @GetStatusText(ticket.Status)
+                                                    </span>
+                                                </div>
+                                                <div class="text-muted small mb-2">
+                                                    <i class="bi bi-tag me-1"></i>
+                                                    @ticket.ServiceType?.Name
+                                                </div>
+                                                @if (!string.IsNullOrEmpty(ticket.CustomerName) || !string.IsNullOrEmpty(ticket.CustomerPhone))
+                                                {
+                                                    <div class="text-muted small">
+                                                        @if (!string.IsNullOrEmpty(ticket.CustomerName))
+                                                        {
+                                                            <i class="bi bi-person me-1"></i>
+                                                            <span>@ticket.CustomerName</span>
+                                                        }
+                                                        @if (!string.IsNullOrEmpty(ticket.CustomerPhone))
+                                                        {
+                                                            <i class="bi bi-telephone ms-2 me-1"></i>
+                                                            <span>@ticket.CustomerPhone</span>
+                                                        }
+                                                    </div>
+                                                }
+                                            </div>
+                                            <div class="text-end">
+                                                <div class="text-muted small">Created</div>
+                                                <div class="fw-semibold">@ticket.CreatedAt.ToLocalTime().ToString("HH:mm")</div>
+                                                @if (ticket.CompletedAt.HasValue)
+                                                {
+                                                    <div class="text-muted small mt-1">Completed</div>
+                                                    <div class="fw-semibold small">@ticket.CompletedAt.Value.ToLocalTime().ToString("HH:mm")</div>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@* Ticket Details Modal *@
+@if (showTicketDetailsModal && selectedTicket != null)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5); z-index: 1060;">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content ticket-details-modal">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">Ticket Details @selectedTicket.TicketNumber</h5>
+                    <button type="button" class="btn-close" @onclick="CloseTicketDetailsModal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <label class="detail-label">Service</label>
+                            <div class="detail-value">@selectedTicket.ServiceType?.Name</div>
+                        </div>
+                        <div class="col-6">
+                            <label class="detail-label">Status</label>
+                            <div>
+                                <span class="status-badge @GetStatusBadgeClass(selectedTicket.Status)">
+                                    @GetStatusText(selectedTicket.Status)
+                                </span>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <label class="detail-label">Created Time</label>
+                            <div class="detail-value">@selectedTicket.CreatedAt.ToLocalTime().ToString("HH:mm")</div>
+                        </div>
+                        <div class="col-6">
+                            <label class="detail-label">Completed Time</label>
+                            <div class="detail-value">
+                                @if (selectedTicket.CompletedAt.HasValue)
+                                {
+                                    @selectedTicket.CompletedAt.Value.ToLocalTime().ToString("HH:mm")
+                                }
+                                else
+                                {
+                                    <span class="text-muted">-</span>
+                                }
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <label class="detail-label">Service Duration</label>
+                            <div class="detail-value">
+                                @if (selectedTicket.ServedAt.HasValue && selectedTicket.CompletedAt.HasValue)
+                                {
+                                    var duration = selectedTicket.CompletedAt.Value - selectedTicket.ServedAt.Value;
+                                    <span>@((int)duration.TotalMinutes)m</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">-</span>
+                                }
+                            </div>
+                        </div>
+
+                        @if (!string.IsNullOrEmpty(selectedTicket.CustomerName) || 
+                             !string.IsNullOrEmpty(selectedTicket.CustomerPhone) || 
+                             !string.IsNullOrEmpty(selectedTicket.CustomerEmail))
+                        {
+                            <div class="col-12">
+                                <hr class="my-2">
+                                <h6 class="fw-bold mb-3">Customer Information</h6>
+                            </div>
+                            
+                            @if (!string.IsNullOrEmpty(selectedTicket.CustomerName))
+                            {
+                                <div class="col-12">
+                                    <label class="detail-label">Name</label>
+                                    <div class="detail-value">@selectedTicket.CustomerName</div>
+                                </div>
+                            }
+                            
+                            @if (!string.IsNullOrEmpty(selectedTicket.CustomerPhone))
+                            {
+                                <div class="col-12">
+                                    <label class="detail-label">Phone</label>
+                                    <div class="detail-value">@selectedTicket.CustomerPhone</div>
+                                </div>
+                            }
+                            
+                            @if (!string.IsNullOrEmpty(selectedTicket.CustomerEmail))
+                            {
+                                <div class="col-12">
+                                    <label class="detail-label">Email</label>
+                                    <div class="detail-value">@selectedTicket.CustomerEmail</div>
+                                </div>
+                            }
+                            
+                            @if (!string.IsNullOrEmpty(selectedTicket.CustomerNotes))
+                            {
+                                <div class="col-12">
+                                    <label class="detail-label">Notes</label>
+                                    <div class="detail-value">@selectedTicket.CustomerNotes</div>
+                                </div>
+                            }
+                        }
+
+                        @if (!string.IsNullOrEmpty(selectedTicket.Remarks))
+                        {
+                            <div class="col-12">
+                                <hr class="my-2">
+                                <label class="detail-label">Remarks</label>
+                                <div class="detail-value">@selectedTicket.Remarks</div>
+                            </div>
+                        }
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseTicketDetailsModal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}

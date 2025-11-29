@@ -1,0 +1,84 @@
+<button class="btn btn-@Variant @Class" @onclick="HandleClick" disabled="@(Disabled || IsLoading)" type="@Type">
+    @if (IsLoading)
+    {
+        <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+    }
+    else if (!string.IsNullOrEmpty(Icon))
+    {
+        <i class="@Icon me-2"></i>
+    }
+    @ChildContent
+</button>
+
+<style>
+    .btn {
+        border-radius: 10px;
+        font-weight: 600;
+        padding: 0.75rem 1.5rem;
+        transition: all 0.3s ease;
+    }
+
+    .btn:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    /* Custom Variants */
+    .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        color: white;
+    }
+    
+    .btn-primary:hover:not(:disabled) {
+        box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-success {
+        background: #10b981;
+        border: none;
+        color: white;
+    }
+
+    .btn-danger {
+        background: #ef4444;
+        border: none;
+        color: white;
+    }
+
+    .btn-warning {
+        background: #f59e0b;
+        border: none;
+        color: white;
+    }
+    
+    .btn-outline-primary {
+        border: 2px solid #667eea;
+        color: #667eea;
+        background: transparent;
+    }
+    
+    .btn-outline-primary:hover:not(:disabled) {
+        background: #667eea;
+        color: white;
+    }
+</style>
+
+@code {
+    [Parameter] public string Variant { get; set; } = "primary"; // primary, secondary, success, danger, warning, outline-primary, etc.
+    [Parameter] public string Type { get; set; } = "button";
+    [Parameter] public string? Icon { get; set; }
+    [Parameter] public bool IsLoading { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public EventCallback<MouseEventArgs> OnClick { get; set; }
+
+    private async Task HandleClick(MouseEventArgs e)
+    {
+        if (!Disabled && !IsLoading)
+        {
+            await OnClick.InvokeAsync(e);
+        }
+    }
+}

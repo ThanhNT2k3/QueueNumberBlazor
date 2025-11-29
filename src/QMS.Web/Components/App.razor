@@ -1,0 +1,65 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <base href="/" />
+    <link rel="stylesheet" href="bootstrap/bootstrap.min.css" />
+    <link rel="stylesheet" href="app.css" />
+    <link rel="stylesheet" href="QMS.Web.styles.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="icon" type="image/png" href="favicon.png" />
+    <HeadOutlet />
+    
+    <style>
+        /* Hide address bar and browser UI for kiosk mode */
+        /* Hide address bar and browser UI for kiosk mode */
+        /* body {
+            overflow: hidden;
+        } */
+        
+        /* Fullscreen styles */
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+    </style>
+    
+    <script>
+        // Request fullscreen on load for kiosk pages
+        window.addEventListener('load', function() {
+            if (window.location.pathname.includes('/kiosk')) {
+                // Try to go fullscreen
+                var elem = document.documentElement;
+                if (elem.requestFullscreen) {
+                    elem.requestFullscreen().catch(err => console.log('Fullscreen request failed'));
+                } else if (elem.webkitRequestFullscreen) {
+                    elem.webkitRequestFullscreen();
+                } else if (elem.msRequestFullscreen) {
+                    elem.msRequestFullscreen();
+                }
+            }
+        });
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        window.renderChart = (canvasId, config) => {
+            const ctx = document.getElementById(canvasId);
+            if (ctx) {
+                // Destroy existing chart if any
+                if (ctx.chart) {
+                    ctx.chart.destroy();
+                }
+                ctx.chart = new Chart(ctx, config);
+            }
+        };
+    </script>
+</head>
+
+<body>
+    <Routes />
+    <script src="_framework/blazor.web.js"></script>
+</body>
+
+</html>

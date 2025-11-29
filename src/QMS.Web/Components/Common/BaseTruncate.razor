@@ -1,0 +1,143 @@
+@if (ShowTooltip)
+{
+    <span class="text-truncate-wrapper @ContainerClass" 
+          @onmouseenter="ShowFullText" 
+          @onmouseleave="HideFullText"
+          style="@GetStyles()">
+        <span class="@(Lines > 1 ? "text-truncate-multiline" : "text-truncate")">
+            @if (ChildContent != null)
+            {
+                @ChildContent
+            }
+            else
+            {
+                @Text
+            }
+        </span>
+        @if (isHovered && !string.IsNullOrEmpty(GetTextContent()))
+        {
+            <div class="truncate-tooltip">
+                @GetTextContent()
+            </div>
+        }
+    </span>
+}
+else
+{
+    <span class="@(Lines > 1 ? "text-truncate-multiline" : "text-truncate") @ContainerClass" style="@GetStyles()">
+        @if (ChildContent != null)
+        {
+            @ChildContent
+        }
+        else
+        {
+            @Text
+        }
+    </span>
+}
+
+<style>
+    .text-truncate {
+        display: inline-block;
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        vertical-align: bottom;
+    }
+
+    .text-truncate-multiline {
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .text-truncate-wrapper {
+        position: relative;
+        display: inline-block;
+        max-width: 100%;
+    }
+
+    .truncate-tooltip {
+        position: absolute;
+        bottom: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #1e293b;
+        color: white;
+        padding: 0.5rem 0.75rem;
+        border-radius: 8px;
+        font-size: 13px;
+        white-space: normal;
+        max-width: 300px;
+        margin-bottom: 0.5rem;
+        z-index: 1000;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        animation: tooltipFadeIn 0.2s ease-out;
+    }
+
+    .truncate-tooltip::after {
+        content: '';
+        position: absolute;
+        top: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        border: 6px solid transparent;
+        border-top-color: #1e293b;
+    }
+
+    @@keyframes tooltipFadeIn {
+        from {
+            opacity: 0;
+            transform: translateX(-50%) translateY(-5px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+    }
+</style>
+
+@code {
+    [Parameter] public string? Text { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public int Lines { get; set; } = 1;
+    [Parameter] public int? MaxWidth { get; set; }
+    [Parameter] public bool ShowTooltip { get; set; } = true;
+    [Parameter] public string ContainerClass { get; set; } = "";
+
+    private bool isHovered = false;
+
+    private string GetStyles()
+    {
+        var styles = new List<string>();
+        
+        if (MaxWidth.HasValue)
+        {
+            styles.Add($"max-width: {MaxWidth}px");
+        }
+        
+        if (Lines > 1)
+        {
+            styles.Add($"-webkit-line-clamp: {Lines}");
+        }
+
+        return string.Join("; ", styles);
+    }
+
+    private void ShowFullText()
+    {
+        isHovered = true;
+    }
+
+    private void HideFullText()
+    {
+        isHovered = false;
+    }
+
+    private string GetTextContent()
+    {
+        return Text ?? "";
+    }
+}

@@ -1,0 +1,378 @@
+@page "/tm/audit"
+@rendermode InteractiveServer
+@layout Layout.TMLayout
+@inject ICounterService CounterService
+@inject QMS.Web.Services.AuthenticationStateService AuthState
+@inject NavigationManager Navigation
+
+<style>
+    .audit-page {
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+
+
+
+
+
+    .timeline-card {
+        background: white;
+        border-radius: 16px;
+        padding: 2rem;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    }
+
+    .timeline {
+        position: relative;
+        padding-left: 2rem;
+    }
+
+    .timeline::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .timeline-item {
+        position: relative;
+        padding-bottom: 2rem;
+    }
+
+    .timeline-item::before {
+        content: '';
+        position: absolute;
+        left: -2.5rem;
+        top: 0.5rem;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: white;
+        border: 3px solid #667eea;
+        box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+    }
+
+    .timeline-item.active::before {
+        background: #10b981;
+        border-color: #10b981;
+        box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1);
+    }
+
+    .timeline-item.inactive::before {
+        background: #ef4444;
+        border-color: #ef4444;
+        box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.1);
+    }
+
+    .timeline-content {
+        background: #f8fafc;
+        border-radius: 12px;
+        padding: 1.25rem;
+        border-left: 3px solid #667eea;
+    }
+
+    .timeline-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+        margin-bottom: 0.75rem;
+    }
+
+    .timeline-title {
+        font-size: 16px;
+        font-weight: 700;
+        color: #1e293b;
+    }
+
+    .timeline-time {
+        font-size: 12px;
+        color: #94a3b8;
+        font-weight: 600;
+    }
+
+    .timeline-details {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+
+    .detail-item {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .detail-label {
+        font-size: 11px;
+        text-transform: uppercase;
+        color: #94a3b8;
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+    }
+
+    .detail-value {
+        font-size: 14px;
+        font-weight: 600;
+        color: #1e293b;
+    }
+
+
+
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        color: #94a3b8;
+    }
+
+    .empty-state i {
+        font-size: 64px;
+        margin-bottom: 1rem;
+        opacity: 0.3;
+    }
+</style>
+
+<div class="audit-page">
+    <!-- Header -->
+    <!-- Header -->
+    <PageHeader Title="Audit History" 
+                Subtitle="Track counter assignment and activity history"
+                Icon="bi bi-clock-history" />
+
+    <!-- Auth Check Loading -->
+    @if (isCheckingAuth)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Verifying access...</span>
+            </div>
+            <p class="text-muted mt-3">Verifying your access permissions...</p>
+        </div>
+    }
+    else
+    {
+        <!-- Filters -->
+    <!-- Filters -->
+    <div class="card p-4 mb-4 border-0 shadow-sm" style="border-radius: 16px;">
+        <div class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <BaseSelect Label="Counter" @bind-Value="selectedCounterId">
+                    <option value="">All Counters</option>
+                    @if (counters != null)
+                    {
+                        @foreach (var counter in counters)
+                        {
+                            <option value="@counter.Id">@counter.Name</option>
+                        }
+                    }
+                </BaseSelect>
+            </div>
+            <div class="col-md-3">
+                <BaseDateInput Label="From Date" @bind-Value="fromDate" />
+            </div>
+            <div class="col-md-3">
+                <BaseDateInput Label="To Date" @bind-Value="toDate" />
+            </div>
+            <div class="col-md-3">
+                <BaseButton Variant="primary" Class="w-100" OnClick="ApplyFilters" Icon="bi bi-funnel">
+                    Apply Filters
+                </BaseButton>
+            </div>
+        </div>
+    </div>
+
+    <!-- Timeline -->
+    <div class="timeline-card">
+        @if (auditHistory == null)
+        {
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        }
+        else if (!auditHistory.Any())
+        {
+            <div class="empty-state">
+                <i class="bi bi-inbox"></i>
+                <h4>No Audit Records Found</h4>
+                <p>There are no assignment records for the selected filters</p>
+            </div>
+        }
+        else
+        {
+            <div class="timeline">
+                @foreach (var record in auditHistory)
+                {
+                    <div class="timeline-item @(record.IsActive ? "active" : "inactive")">
+                        <div class="timeline-content">
+                            <div class="timeline-header">
+                                <div class="timeline-title">
+                                    @if (record.IsActive)
+                                    {
+                                        <i class="bi bi-person-check text-success me-2"></i>
+                                        <span>Teller Assigned</span>
+                                    }
+                                    else
+                                    {
+                                        <i class="bi bi-person-x text-danger me-2"></i>
+                                        <span>Teller Unassigned</span>
+                                    }
+                                </div>
+                                <div class="timeline-time">
+                                    @record.AssignedAt.ToLocalTime().ToString("MMM dd, yyyy HH:mm")
+                                </div>
+                            </div>
+
+                            <div class="timeline-details">
+                                <div class="detail-item">
+                                    <div class="detail-label">Counter</div>
+                                    <div class="detail-value">@record.Counter?.Name</div>
+                                </div>
+                                <div class="detail-item">
+                                    <div class="detail-label">Teller</div>
+                                    <div class="detail-value">@record.User?.FullName</div>
+                                </div>
+                                <div class="detail-item">
+                                    <div class="detail-label">Assigned By</div>
+                                    <div class="detail-value">@record.AssignedBy</div>
+                                </div>
+                                <div class="detail-item">
+                                    <div class="detail-label">Status</div>
+                                    <div class="detail-value">
+                                        <StatusBadge Status="@(record.IsActive ? "active" : "inactive")" Text="@(record.IsActive ? "Active" : "Inactive")" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            @if (!record.IsActive && record.UnassignedAt.HasValue)
+                            {
+                                <div class="timeline-details mt-2">
+                                    <div class="detail-item">
+                                        <div class="detail-label">Unassigned At</div>
+                                        <div class="detail-value">
+                                            @record.UnassignedAt.Value.ToLocalTime().ToString("MMM dd, yyyy HH:mm")
+                                        </div>
+                                    </div>
+                                    <div class="detail-item">
+                                        <div class="detail-label">Unassigned By</div>
+                                        <div class="detail-value">@record.UnassignedBy</div>
+                                    </div>
+                                    <div class="detail-item">
+                                        <div class="detail-label">Duration</div>
+                                        <div class="detail-value">
+                                            @GetDuration(record.AssignedAt, record.UnassignedAt.Value)
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+
+                            @if (!string.IsNullOrEmpty(record.Notes))
+                            {
+                                <div class="mt-2">
+                                    <div class="detail-label">Notes</div>
+                                    <div class="detail-value">@record.Notes</div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+}
+</div>
+
+@code {
+    private string? selectedCounterId;
+    private DateTime fromDate = DateTime.Today.AddDays(-7);
+    private DateTime toDate = DateTime.Today;
+
+    private IEnumerable<Counter>? counters;
+    private IEnumerable<CounterAssignmentHistory>? auditHistory;
+    private bool isCheckingAuth = true;
+
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Initial check
+        if (AuthState.IsAuthenticated && AuthState.UserRole == "TM" && AuthState.BranchId.HasValue)
+        {
+            // Load counters
+            counters = await CounterService.GetCountersByBranchAsync(AuthState.BranchId.Value);
+            await ApplyFilters();
+            isCheckingAuth = false;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            if (!AuthState.IsAuthenticated)
+            {
+                Navigation.NavigateTo("/login", true);
+            }
+            else if (AuthState.UserRole != "TM")
+            {
+                Navigation.NavigateTo("/login", true);
+            }
+            else
+            {
+                if (counters == null)
+                {
+                    counters = await CounterService.GetCountersByBranchAsync(AuthState.BranchId.Value);
+                    await ApplyFilters();
+                }
+                isCheckingAuth = false;
+                StateHasChanged();
+            }
+        }
+    }
+
+    private async Task ApplyFilters()
+    {
+        try
+        {
+            if (!AuthState.BranchId.HasValue) 
+            {
+                Console.WriteLine("[AuditHistory] ApplyFilters skipped: No BranchId");
+                return;
+            }
+
+            int? counterId = string.IsNullOrEmpty(selectedCounterId) ? null : int.Parse(selectedCounterId);
+
+            Console.WriteLine($"[AuditHistory] Loading audit history for branch {AuthState.BranchId}, Counter: {counterId}, From: {fromDate}, To: {toDate}");
+            
+            auditHistory = await CounterService.GetCounterAssignmentHistoryAsync(
+                counterId,
+                null,
+                fromDate,
+                toDate
+            );
+            
+            Console.WriteLine($"[AuditHistory] Loaded {auditHistory?.Count() ?? 0} records");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[AuditHistory] Error in ApplyFilters: {ex}");
+        }
+
+        StateHasChanged();
+    }
+
+    private string GetDuration(DateTime start, DateTime end)
+    {
+        var duration = end - start;
+        
+        if (duration.TotalDays >= 1)
+            return $"{duration.TotalDays:F1} days";
+        else if (duration.TotalHours >= 1)
+            return $"{duration.TotalHours:F1} hours";
+        else
+            return $"{duration.TotalMinutes:F0} minutes";
+    }
+}

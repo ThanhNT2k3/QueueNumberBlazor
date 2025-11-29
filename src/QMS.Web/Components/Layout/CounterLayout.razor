@@ -1,0 +1,167 @@
+@inherits LayoutComponentBase
+@inject QMS.Web.Services.AuthenticationStateService AuthState
+@inject NavigationManager Navigation
+@inject QMS.Application.Interfaces.ICounterService CounterService
+@inject QMS.Application.Interfaces.IQmsNotificationService NotificationService
+@implements IAsyncDisposable
+
+@* Temporarily disabled for debugging
+@if (!AuthState.IsAuthenticated)
+{
+    <div class="auth-required">
+        <div class="text-center p-5">
+            <i class="bi bi-shield-lock display-1 text-warning mb-3"></i>
+            <h3>Authentication Required</h3>
+            <p class="text-muted">Please login to access the counter dashboard</p>
+            <button class="btn btn-primary" @onclick="GoToLogin">Go to Login</button>
+        </div>
+    </div>
+}
+else
+{
+*@
+    <div class="counter-layout">
+        @if (!IsDisplayMode)
+        {
+        <header class="counter-header bg-white border-bottom shadow-sm @(isDropdownOpen ? "z-high" : "")">
+            <div class="container-fluid d-flex align-items-center justify-content-between py-2 px-4">
+                <div class="d-flex align-items-center gap-4">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-bank2 text-primary fs-4"></i>
+                        <span class="fw-bold fs-5">Standard Chartered</span>
+                    </div>
+                    <div class="vr"></div>
+                    <div class="d-flex gap-3">
+                        <NavLink href="@($"/counter/dashboard/{AuthState.CounterId}")" class="nav-link text-uppercase small fw-semibold">
+                            <i class="bi bi-grid me-1"></i> Counter
+                        </NavLink>
+                   
+                        <NavLink href="/counter/counter-display" class="nav-link text-uppercase small fw-semibold">
+                            <i class="bi bi-tv me-1"></i> Display Counter
+                        </NavLink>
+                    </div>
+                </div>
+                <div class="user-dropdown-container">
+                    <UserMenuDropdown OnLogout="CleanupSession" />
+                </div>
+            </div>
+        </header>
+        }
+        <main class="counter-content">
+            @Body
+        </main>
+    </div>
+@* } *@
+
+<style>
+    .auth-required {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    }
+    
+    .counter-layout {
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        background-color: #f8f9fa;
+    }
+    .counter-header {
+        height: 70px;
+        flex-shrink: 0;
+        position: relative;
+        overflow: visible;
+        z-index: 50;
+        background: white;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    }
+    
+    .counter-header.z-high {
+        z-index: 1001;
+    }
+    .counter-content {
+        flex: 1;
+        overflow: auto;
+    }
+    .nav-link {
+        color: #6c757d;
+        text-decoration: none;
+        padding: 0.5rem 0;
+        border-bottom: 2px solid transparent;
+        transition: all 0.2s;
+    }
+    .nav-link:hover {
+        color: #0d6efd;
+    }
+    .nav-link.active {
+        color: #0d6efd;
+        border-bottom-color: #0d6efd;
+    }
+    
+    .user-dropdown-container {
+        position: relative;
+    }
+</style>
+
+@code {
+    private bool isDropdownOpen = false;
+    private bool IsDisplayMode => Navigation.Uri.Contains("counter-display");
+
+    protected override void OnInitialized()
+    {
+        AuthState.OnChange += StateHasChanged;
+        Navigation.LocationChanged += OnLocationChanged;
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        StateHasChanged();
+    }
+
+    private async Task CleanupSession()
+    {
+        if (AuthState.CounterId.HasValue)
+        {
+            try
+            {
+                var counterId = AuthState.CounterId.Value;
+                Console.WriteLine($"[CounterLayout] Cleaning up session for Counter {counterId}...");
+                
+                // Get counter to get BranchId
+                var counter = await CounterService.GetCounterByIdAsync(counterId);
+                if (counter != null)
+                {
+                    // Set counter status to Offline
+                    await CounterService.ChangeCounterStatusAsync(counterId, QMS.Domain.Enums.CounterStatus.Offline);
+                    
+                    // Unassign user from counter
+                    await CounterService.UnassignTellerFromCounterAsync(counterId, AuthState.UserName ?? "System", "Session ended (Logout or Browser Close)");
+                    
+                    // Send notification to TM Counter Management
+                    await NotificationService.NotifyCounterUpdatedAsync(counterId, counter.BranchId, false);
+                    Console.WriteLine($"[CounterLayout] Cleanup completed for Counter {counterId}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[CounterLayout] Cleanup error: {ex.Message}");
+            }
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        AuthState.OnChange -= StateHasChanged;
+        Navigation.LocationChanged -= OnLocationChanged;
+        
+        // If user is still authenticated and has a counter assigned when disposing,
+        // it likely means the browser tab was closed or connection lost.
+        // We should cleanup the session.
+        if (AuthState.IsAuthenticated && AuthState.CounterId.HasValue)
+        {
+            await CleanupSession();
+        }
+    }
+}

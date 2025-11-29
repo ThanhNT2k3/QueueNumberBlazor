@@ -1,0 +1,368 @@
+@rendermode InteractiveServer
+@inject NavigationManager Navigation
+@inject QMS.Web.Services.AuthenticationStateService AuthState
+
+<div class="user-menu-container">
+    <button type="button" class="user-menu-trigger" @onclick="ToggleDropdown">
+        <div class="user-avatar-trigger">
+            @GetInitials(AuthState.UserName)
+        </div>
+        <div class="user-info-trigger">
+            <div class="user-name-trigger">@(AuthState.UserName)</div>
+            <div class="user-meta-trigger">
+                <span class="badge-trigger">@(AuthState.UserRole)</span>
+                <span class="branch-trigger">@(AuthState.BranchName)</span>
+            </div>
+        </div>
+        <i class="bi bi-chevron-down arrow-trigger @(isDropdownOpen ? "rotate" : "")"></i>
+    </button>
+
+    @if (isDropdownOpen)
+    {
+        <div class="dropdown-overlay" @onclick="CloseDropdown"></div>
+        <div class="dropdown-panel">
+            <div class="dropdown-header-gradient">
+                <div class="dropdown-avatar-large">
+                    @GetInitials(AuthState.UserName ?? "TM")
+                </div>
+                <div class="dropdown-user-info">
+                    <div class="dropdown-user-name">@(AuthState.UserName ?? "Transaction Manager")</div>
+                    <div class="dropdown-user-email">@(AuthState.UserRole?.ToLower() ?? "tm")@@sc.com</div>
+                    <div class="dropdown-badges">
+                        <span class="badge-dropdown role">@(AuthState.UserRole ?? "TM")</span>
+                        <span class="badge-dropdown branch">@(AuthState.BranchName ?? "Branch")</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="dropdown-menu-items">
+                <button class="dropdown-menu-item" @onclick="NavigateToProfile">
+                    <div class="menu-item-icon profile-icon">
+                        <i class="bi bi-person"></i>
+                    </div>
+                    <div class="menu-item-content">
+                        <div class="menu-item-title">Hồ sơ cá nhân</div>
+                        <div class="menu-item-desc">Xem và chỉnh sửa hồ sơ</div>
+                    </div>
+                </button>
+
+                <button class="dropdown-menu-item logout-item" @onclick="Logout">
+                    <div class="menu-item-icon logout-icon">
+                        <i class="bi bi-box-arrow-right"></i>
+                    </div>
+                    <div class="menu-item-content">
+                        <div class="menu-item-title">Đăng xuất</div>
+                        <div class="menu-item-desc">Kết thúc phiên làm việc</div>
+                    </div>
+                </button>
+            </div>
+        </div>
+    }
+</div>
+
+<style>
+    /* User Menu Container */
+    .user-menu-container {
+        position: relative;
+    }
+
+    /* Trigger Button */
+    .user-menu-trigger {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 6px 12px 6px 6px;
+        background: white;
+        border: 1.5px solid #e5e7eb;
+        border-radius: 12px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .user-menu-trigger:hover {
+        border-color: #9ca3af;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    }
+
+    .user-avatar-trigger {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 16px;
+        font-weight: 700;
+        flex-shrink: 0;
+    }
+
+    .user-info-trigger {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        text-align: left;
+    }
+
+    .user-name-trigger {
+        font-size: 14px;
+        font-weight: 600;
+        color: #111827;
+        line-height: 1.2;
+    }
+
+    .user-meta-trigger {
+        display: flex;
+        gap: 6px;
+        font-size: 11px;
+        color: #6b7280;
+    }
+
+    .badge-trigger {
+        text-transform: uppercase;
+        font-weight: 600;
+    }
+
+    .branch-trigger {
+        font-weight: 400;
+    }
+
+    .arrow-trigger {
+        font-size: 12px;
+        color: #9ca3af;
+        transition: transform 0.2s ease;
+        margin-left: 4px;
+    }
+
+    .arrow-trigger.rotate {
+        transform: rotate(180deg);
+    }
+
+    /* Dropdown Overlay */
+    .dropdown-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: transparent;
+        z-index: 999;
+    }
+
+    /* Dropdown Panel */
+    .dropdown-panel {
+        position: absolute;
+        top: calc(100% + 8px);
+        right: 0;
+        width: 300px;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.05);
+        z-index: 1000;
+        animation: dropdownFadeIn 0.15s ease-out;
+        overflow: hidden;
+    }
+
+    @@keyframes dropdownFadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(-8px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* Dropdown Header with Gradient */
+    .dropdown-header-gradient {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 20px;
+        display: flex;
+        gap: 12px;
+        align-items: center;
+    }
+
+    .dropdown-avatar-large {
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.25);
+        border: 2px solid rgba(255, 255, 255, 0.4);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 22px;
+        font-weight: 700;
+        flex-shrink: 0;
+    }
+
+    .dropdown-user-info {
+        flex: 1;
+        color: white;
+    }
+
+    .dropdown-user-name {
+        font-size: 16px;
+        font-weight: 700;
+        margin-bottom: 2px;
+    }
+
+    .dropdown-user-email {
+        font-size: 12px;
+        opacity: 0.9;
+        margin-bottom: 8px;
+    }
+
+    .dropdown-badges {
+        display: flex;
+        gap: 6px;
+    }
+
+    .badge-dropdown {
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 10px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .badge-dropdown.role {
+        background: rgba(255, 255, 255, 0.25);
+        border: 1px solid rgba(255, 255, 255, 0.4);
+    }
+
+    .badge-dropdown.branch {
+        background: rgba(255, 255, 255, 0.15);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+
+    /* Dropdown Menu Items */
+    .dropdown-menu-items {
+        padding: 8px;
+    }
+
+    .dropdown-menu-item {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px;
+        background: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        margin-bottom: 4px;
+        text-align: left;
+    }
+
+    .dropdown-menu-item:hover {
+        background: #f3f4f6;
+    }
+
+    .dropdown-menu-item:last-child {
+        margin-bottom: 0;
+    }
+
+    .menu-item-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        flex-shrink: 0;
+    }
+
+    .menu-item-icon.profile-icon {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+
+    .menu-item-icon.logout-icon {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .menu-item-content {
+        flex: 1;
+    }
+
+    .menu-item-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: #111827;
+        margin-bottom: 2px;
+    }
+
+    .menu-item-desc {
+        font-size: 11px;
+        color: #6b7280;
+    }
+
+    .logout-item .menu-item-title {
+        color: #dc2626;
+    }
+</style>
+
+@code {
+    private bool isDropdownOpen = false;
+   protected override void OnInitialized()
+    {
+        AuthState.OnChange += StateHasChanged;
+        Navigation.LocationChanged += OnLocationChanged;
+    }
+    
+    private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        isDropdownOpen = false; // Close dropdown on navigation
+        StateHasChanged();
+    }
+    
+    private void ToggleDropdown()
+    {
+        isDropdownOpen = !isDropdownOpen;
+        Console.WriteLine($"[UserMenuDropdown] Toggled: {isDropdownOpen}");
+    }
+
+    private void CloseDropdown()
+    {
+        isDropdownOpen = false;
+    }
+
+    private string GetInitials(string name)
+    {
+        if (string.IsNullOrEmpty(name)) return "TM";
+        var parts = name.Split(' ');
+        if (parts.Length >= 2)
+            return $"{parts[0][0]}{parts[^1][0]}".ToUpper();
+        return name.Substring(0, Math.Min(2, name.Length)).ToUpper();
+    }
+
+    private void NavigateToProfile()
+    {
+        CloseDropdown();
+        Navigation.NavigateTo("/user/profile");
+    }
+
+    [Parameter]
+    public EventCallback OnLogout { get; set; }
+
+    private async Task Logout()
+    {
+        CloseDropdown();
+        
+        if (OnLogout.HasDelegate)
+        {
+            await OnLogout.InvokeAsync();
+        }
+        
+        await AuthState.Logout();
+        Navigation.NavigateTo("/login", true);
+    }
+}

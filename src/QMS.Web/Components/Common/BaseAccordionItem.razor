@@ -1,0 +1,117 @@
+<div class="accordion-item">
+    <h2 class="accordion-header">
+        <button class="accordion-button @(IsExpanded ? "" : "collapsed")" 
+                type="button" 
+                @onclick="Toggle">
+            @if (!string.IsNullOrEmpty(Icon))
+            {
+                <i class="@Icon me-2"></i>
+            }
+            @if (HeaderContent != null)
+            {
+                @HeaderContent
+            }
+            else
+            {
+                @Title
+            }
+        </button>
+    </h2>
+    <div class="accordion-collapse @(IsExpanded ? "show" : "collapse")">
+        <div class="accordion-body">
+            @BodyContent
+        </div>
+    </div>
+</div>
+
+<style>
+    .accordion-item {
+        border: none;
+        margin-bottom: 0.5rem;
+        background: white;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    }
+
+    .accordion-header {
+        margin-bottom: 0;
+    }
+
+    .accordion-button {
+        background: white;
+        border: none;
+        padding: 1rem 1.25rem;
+        font-weight: 600;
+        color: #1e293b;
+        transition: all 0.3s ease;
+        border-radius: 12px;
+    }
+
+    .accordion-button:hover {
+        background: #f8fafc;
+    }
+
+    .accordion-button:not(.collapsed) {
+        background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+        color: #667eea;
+        box-shadow: none;
+    }
+
+    .accordion-button::after {
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23667eea'%3e%3cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3e%3c/svg%3e");
+        transition: transform 0.3s ease;
+    }
+
+    .accordion-button:not(.collapsed)::after {
+        transform: rotate(-180deg);
+    }
+
+    .accordion-collapse {
+        transition: height 0.3s ease;
+    }
+
+    .accordion-body {
+        padding: 1rem 1.25rem 1.25rem;
+        color: #475569;
+        animation: fadeIn 0.3s ease-out;
+    }
+
+    @@keyframes fadeIn {
+        from {
+            opacity: 0;
+        }
+        to {
+            opacity: 1;
+        }
+    }
+</style>
+
+@code {
+    [CascadingParameter] private BaseAccordion? Parent { get; set; }
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public string? Icon { get; set; }
+    [Parameter] public RenderFragment? HeaderContent { get; set; }
+    [Parameter] public RenderFragment? BodyContent { get; set; }
+    [Parameter] public bool InitiallyExpanded { get; set; } = false;
+
+    internal bool IsExpanded { get; private set; }
+
+    protected override void OnInitialized()
+    {
+        IsExpanded = InitiallyExpanded;
+        Parent?.RegisterItem(this);
+    }
+
+    private void Toggle()
+    {
+        IsExpanded = !IsExpanded;
+        Parent?.OnItemToggled(this);
+    }
+
+    internal void Collapse()
+    {
+        IsExpanded = false;
+        StateHasChanged();
+    }
+}

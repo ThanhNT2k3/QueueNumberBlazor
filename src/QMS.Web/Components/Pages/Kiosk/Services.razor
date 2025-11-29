@@ -1,0 +1,215 @@
+@page "/kiosk/branch/{BranchId:int}/services"
+@rendermode InteractiveServer
+@layout Layout.KioskLayout
+@inject IRepository<ServiceType> ServiceRepository
+@inject ITicketService TicketService
+@inject NavigationManager Navigation
+
+<div class="services-container">
+    <div class="services-header text-center mb-5 animate-fade-in">
+        <h1 class="display-4 fw-bold mb-3">How can we help you today?</h1>
+        <p class="lead text-muted fs-5">Select a service to get your ticket</p>
+    </div>
+    
+    <div class="services-grid">
+        @if (services == null)
+        {
+            <div class="text-center">
+                <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status"></div>
+            </div>
+        }
+        else
+        {
+            @foreach (var service in services)
+            {
+                <div class="service-item animate-scale-in">
+                    <div class="service-card" style="--service-color: @service.ColorCode" @onclick="() => CreateTicket(service.Id)">
+                        <div class="service-icon-wrapper" style="background: @service.ColorCode">
+                            <i class="bi @service.IconClass"></i>
+                        </div>
+                        <div class="service-content">
+                            <h3 class="service-title">@service.Name</h3>
+                            <p class="service-description">@service.Description</p>
+                        </div>
+                        <div class="service-action">
+                            <span class="tap-text">Tap to get ticket</span>
+                            <i class="bi bi-arrow-right-circle"></i>
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+    </div>
+    
+    <div class="back-button-area text-center mt-5">
+        <NavLink href="/kiosk" class="back-link">
+            <i class="bi bi-arrow-left-circle me-2"></i>
+            <span>Back to Branch Selection</span>
+        </NavLink>
+    </div>
+</div>
+
+<style>
+    .services-container {
+        min-height: 100vh;
+        padding: 3rem 2rem;
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    }
+    
+    .services-grid {
+        max-width: 1000px;
+        margin: 0 auto;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+        gap: 2rem;
+    }
+    
+    .service-card {
+        background: white;
+        border-radius: 24px;
+        padding: 2.5rem;
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+        border: 3px solid transparent;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .service-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 6px;
+        background: var(--service-color, #667eea);
+        transform: scaleX(0);
+        transition: transform 0.3s;
+    }
+    
+    .service-card:hover::before {
+        transform: scaleX(1);
+    }
+    
+    .service-card:hover {
+        transform: translateY(-12px);
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12);
+    }
+    
+    .service-icon-wrapper {
+        width: 90px;
+        height: 90px;
+        border-radius: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+    }
+    
+    .service-icon-wrapper i {
+        font-size: 2.5rem;
+        color: white;
+    }
+    
+    .service-content {
+        margin-bottom: 1.5rem;
+    }
+    
+    .service-title {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: #1a1a1a;
+        margin-bottom: 0.75rem;
+    }
+    
+    .service-description {
+        color: #6c757d;
+        font-size: 1.1rem;
+        margin: 0;
+    }
+    
+    .service-action {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding-top: 1rem;
+        border-top: 2px solid #f0f0f0;
+    }
+    
+    .tap-text {
+        color: #007bff;
+        font-weight: 600;
+        font-size: 1.1rem;
+    }
+    
+    .service-action i {
+        font-size: 2rem;
+        color: #007bff;
+        transition: transform 0.3s;
+    }
+    
+    .service-card:hover .service-action i {
+        transform: translateX(8px);
+    }
+    
+    .back-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 1rem 2rem;
+        background: white;
+        border-radius: 50px;
+        text-decoration: none;
+        color: #6c757d;
+        font-size: 1.2rem;
+        font-weight: 600;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        transition: all 0.3s;
+    }
+    
+    .back-link:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+        color: #007bff;
+    }
+    
+    
+    @@keyframes scale-in {
+        from { opacity: 0; transform: scale(0.9); }
+        to { opacity: 1; transform: scale(1); }
+    }
+    
+    .animate-scale-in {
+        animation: scale-in 0.4s ease-out;
+        animation-fill-mode: both;
+    }
+    
+    .animate-scale-in:nth-child(1) { animation-delay: 0.1s; }
+    .animate-scale-in:nth-child(2) { animation-delay: 0.2s; }
+    .animate-scale-in:nth-child(3) { animation-delay: 0.3s; }
+    .animate-scale-in:nth-child(4) { animation-delay: 0.4s; }
+    
+    @@media (max-width: 768px) {
+        .services-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+@code {
+    [Parameter] public int BranchId { get; set; }
+    private IEnumerable<ServiceType>? services;
+
+    protected override async Task OnInitializedAsync()
+    {
+        services = await ServiceRepository.GetAllAsync();
+    }
+
+    private async Task CreateTicket(int serviceTypeId)
+    {
+        var ticket = await TicketService.CreateTicketAsync(BranchId, serviceTypeId, "en", null, null);
+        Navigation.NavigateTo($"/kiosk/ticket/{ticket.Id}");
+    }
+}

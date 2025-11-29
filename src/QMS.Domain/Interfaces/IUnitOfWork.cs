@@ -1,0 +1,6 @@
+namespace QMS.Domain.Interfaces;
+
+public interface IUnitOfWork : IDisposable
+{
+    Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
+}

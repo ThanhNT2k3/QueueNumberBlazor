@@ -1,0 +1,355 @@
+@page "/tm/staff"
+@rendermode InteractiveServer
+@layout Layout.TMLayout
+@inject QMS.Domain.Interfaces.IRepository<QMS.Domain.Entities.User> UserRepository
+@inject QMS.Domain.Interfaces.IRepository<QMS.Domain.Entities.Branch> BranchRepository
+@inject QMS.Domain.Interfaces.IUnitOfWork UnitOfWork
+@inject QMS.Web.Services.AuthenticationStateService AuthState
+@inject NavigationManager Navigation
+@inject QMS.Application.Interfaces.IQmsNotificationService NotificationService
+
+<div class="staff-management-container">
+    <div class="page-header mb-4">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h2 class="fw-bold mb-1">
+                    <i class="bi bi-people-fill me-2"></i>
+                    Staff Management
+                </h2>
+                <p class="text-muted mb-0">Manage staff members in your branch</p>
+            </div>
+            <button class="btn btn-primary" @onclick="ShowAddStaffModal">
+                <i class="bi bi-plus-circle me-2"></i>
+                Add Staff
+            </button>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else if (staffList != null && staffList.Any())
+    {
+        <div class="row g-3">
+            @foreach (var staff in staffList)
+            {
+                <div class="col-md-6 col-lg-4">
+                    <div class="staff-card">
+                        <div class="staff-card-header">
+                            <div class="staff-avatar">
+                                @GetInitials(staff.FullName)
+                            </div>
+                            <div class="flex-grow-1">
+                                <h5 class="mb-1">@staff.FullName</h5>
+                                <span class="badge @GetRoleBadgeClass(staff.Role)">@staff.Role</span>
+                            </div>
+                        </div>
+                        <div class="staff-card-body">
+                            <div class="staff-info-item">
+                                <i class="bi bi-envelope"></i>
+                                <span>@staff.Email</span>
+                            </div>
+                            @if (!string.IsNullOrEmpty(staff.PhoneNumber))
+                            {
+                                <div class="staff-info-item">
+                                    <i class="bi bi-telephone"></i>
+                                    <span>@staff.PhoneNumber</span>
+                                </div>
+                            }
+                            <div class="staff-info-item">
+                                <i class="bi bi-building"></i>
+                                <span>@(branches?.FirstOrDefault(b => b.Id == staff.CurrentBranchId)?.Name ?? "N/A")</span>
+                            </div>
+                        </div>
+                        <div class="staff-card-footer">
+                            <button class="btn btn-sm btn-outline-primary" @onclick="() => EditStaff(staff)">
+                                <i class="bi bi-pencil"></i> Edit
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteStaff(staff)">
+                                <i class="bi bi-trash"></i> Delete
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="empty-state">
+            <i class="bi bi-people"></i>
+            <h4>No Staff Members</h4>
+            <p>Click "Add Staff" to create your first staff member</p>
+        </div>
+    }
+</div>
+
+@* Add/Edit Staff Modal *@
+@if (showStaffModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@(editingStaff?.Id > 0 ? "Edit Staff" : "Add New Staff")</h5>
+                    <button type="button" class="btn-close" @onclick="CloseStaffModal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Full Name</label>
+                        <input type="text" class="form-control" @bind="editingStaff.FullName" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Email</label>
+                        <input type="email" class="form-control" @bind="editingStaff.Email" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Phone Number</label>
+                        <input type="text" class="form-control" @bind="editingStaff.PhoneNumber" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Role</label>
+                        <select class="form-select" @bind="editingStaff.Role">
+                            <option value="Teller">Teller</option>
+                            <option value="TM">Transaction Manager</option>
+                            <option value="Manager">Manager</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Branch</label>
+                        <select class="form-select" @bind="editingStaff.CurrentBranchId">
+                            <option value="0">Select Branch</option>
+                            @if (branches != null)
+                            {
+                                @foreach (var branch in branches)
+                                {
+                                    <option value="@branch.Id">@branch.Name</option>
+                                }
+                            }
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseStaffModal">Cancel</button>
+                    <button type="button" class="btn btn-primary" @onclick="SaveStaff">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<style>
+    .staff-management-container {
+        padding: 2rem;
+    }
+
+    .staff-card {
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        overflow: hidden;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .staff-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    }
+
+    .staff-card-header {
+        padding: 1.5rem;
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .staff-avatar {
+        width: 60px;
+        height: 60px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1.25rem;
+        font-weight: bold;
+    }
+
+    .staff-card-body {
+        padding: 1.5rem;
+    }
+
+    .staff-info-item {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.5rem 0;
+        color: #64748b;
+        font-size: 0.9rem;
+    }
+
+    .staff-info-item i {
+        color: #667eea;
+        font-size: 1rem;
+    }
+
+    .staff-card-footer {
+        padding: 1rem 1.5rem;
+        background: #f8f9fa;
+        display: flex;
+        gap: 0.5rem;
+        justify-content: flex-end;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        color: #94a3b8;
+    }
+
+    .empty-state i {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+        opacity: 0.3;
+    }
+
+    .empty-state h4 {
+        margin-bottom: 0.5rem;
+    }
+</style>
+
+@code {
+    private List<QMS.Domain.Entities.User>? staffList;
+    private List<QMS.Domain.Entities.Branch>? branches;
+    private bool isLoading = true;
+    private bool showStaffModal = false;
+    private QMS.Domain.Entities.User editingStaff = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!AuthState.IsAuthenticated || AuthState.UserRole != "TM")
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        isLoading = true;
+        
+        branches = (await BranchRepository.GetAllAsync()).ToList();
+        
+        if (AuthState.BranchId.HasValue)
+        {
+            var allUsers = await UserRepository.GetAllAsync();
+            staffList = allUsers.Where(u => u.CurrentBranchId == AuthState.BranchId.Value).ToList();
+        }
+        
+        isLoading = false;
+    }
+
+    private void ShowAddStaffModal()
+    {
+        editingStaff = new QMS.Domain.Entities.User 
+        { 
+            CurrentBranchId = AuthState.BranchId ?? 0,
+            Role = "Teller"
+        };
+        showStaffModal = true;
+    }
+
+    private void EditStaff(QMS.Domain.Entities.User staff)
+    {
+        editingStaff = new QMS.Domain.Entities.User
+        {
+            Id = staff.Id,
+            FullName = staff.FullName,
+            Email = staff.Email,
+            PhoneNumber = staff.PhoneNumber,
+            Role = staff.Role,
+            CurrentBranchId = staff.CurrentBranchId
+        };
+        showStaffModal = true;
+    }
+
+    private async Task SaveStaff()
+    {
+        if (string.IsNullOrWhiteSpace(editingStaff.FullName) || 
+            string.IsNullOrWhiteSpace(editingStaff.Email))
+        {
+            return;
+        }
+
+        if (editingStaff.Id > 0)
+        {
+            var existing = await UserRepository.GetByIdAsync(editingStaff.Id);
+            if (existing != null)
+            {
+                existing.FullName = editingStaff.FullName;
+                existing.Email = editingStaff.Email;
+                existing.PhoneNumber = editingStaff.PhoneNumber;
+                existing.Role = editingStaff.Role;
+                existing.CurrentBranchId = editingStaff.CurrentBranchId;
+                await UserRepository.UpdateAsync(existing);
+            }
+        }
+        else
+        {
+            await UserRepository.AddAsync(editingStaff);
+        }
+
+        await UnitOfWork.SaveChangesAsync();
+        await LoadData();
+        CloseStaffModal();
+    }
+
+    private async Task DeleteStaff(QMS.Domain.Entities.User staff)
+    {
+        if (staff.Id > 0)
+        {
+            var existing = await UserRepository.GetByIdAsync(staff.Id);
+            if (existing != null)
+            {
+                await UserRepository.DeleteAsync(existing);
+                await UnitOfWork.SaveChangesAsync();
+                await LoadData();
+            }
+        }
+    }
+
+    private void CloseStaffModal()
+    {
+        showStaffModal = false;
+        editingStaff = new();
+    }
+
+    private string GetInitials(string name)
+    {
+        if (string.IsNullOrEmpty(name)) return "U";
+        var parts = name.Split(' ');
+        if (parts.Length >= 2)
+            return $"{parts[0][0]}{parts[^1][0]}".ToUpper();
+        return name.Substring(0, Math.Min(2, name.Length)).ToUpper();
+    }
+
+    private string GetRoleBadgeClass(string role)
+    {
+        return role switch
+        {
+            "TM" => "bg-purple text-white",
+            "Teller" => "bg-info text-dark",
+            "Manager" => "bg-danger text-white",
+            _ => "bg-secondary text-white"
+        };
+    }
+}

@@ -1,0 +1,41 @@
+<div class="user-avatar @SizeClass" style="@Style">
+    @Initials
+</div>
+
+<style>
+    .user-avatar {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: bold;
+        flex-shrink: 0;
+    }
+
+    .avatar-sm { width: 32px; height: 32px; font-size: 0.8rem; }
+    .avatar-md { width: 48px; height: 48px; font-size: 1rem; }
+    .avatar-lg { width: 60px; height: 60px; font-size: 1.2rem; }
+    .avatar-xl { width: 80px; height: 80px; font-size: 1.5rem; }
+</style>
+
+@code {
+    [Parameter] public string FullName { get; set; } = "";
+    [Parameter] public string Size { get; set; } = "md"; // sm, md, lg, xl
+    [Parameter] public string Style { get; set; } = "";
+
+    private string SizeClass => $"avatar-{Size}";
+
+    private string Initials
+    {
+        get
+        {
+            if (string.IsNullOrEmpty(FullName)) return "U";
+            var parts = FullName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length >= 2)
+                return $"{parts[0][0]}{parts[^1][0]}".ToUpper();
+            return FullName.Substring(0, Math.Min(2, FullName.Length)).ToUpper();
+        }
+    }
+}

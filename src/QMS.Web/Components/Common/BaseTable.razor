@@ -1,0 +1,196 @@
+<div class="table-responsive @ContainerClass">
+    <table class="table table-hover align-middle base-table @TableClass">
+        @if (HeaderContent != null)
+        {
+            <thead class="table-light">
+                <tr>@HeaderContent</tr>
+            </thead>
+        }
+        <tbody>
+            @if (IsLoading)
+            {
+                <tr>
+                    <td colspan="100" class="text-center py-5">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </td>
+                </tr>
+            }
+            else if (IsEmpty)
+            {
+                <tr>
+                    <td colspan="100" class="text-center py-5 text-muted">
+                        <i class="bi bi-inbox" style="font-size: 32px; opacity: 0.3;"></i>
+                        <div class="mt-2">@EmptyText</div>
+                    </td>
+                </tr>
+            }
+            else
+            {
+                @BodyContent
+            }
+        </tbody>
+    </table>
+</div>
+
+@if (EnablePagination && !IsLoading && !IsEmpty)
+{
+    <div class="d-flex justify-content-between align-items-center mt-3 px-2">
+        <div class="d-flex align-items-center gap-2">
+            <span class="text-muted small">Show</span>
+            <select class="form-select form-select-sm" style="width: 70px;" value="@PageSize" @onchange="OnPageSizeChange">
+                @foreach (var size in PageSizeOptions)
+                {
+                    <option value="@size">@size</option>
+                }
+            </select>
+            <span class="text-muted small">entries</span>
+        </div>
+
+        <div class="d-flex align-items-center gap-3">
+            <span class="text-muted small">
+                Showing @StartItem to @EndItem of @TotalItems entries
+            </span>
+            <nav aria-label="Table navigation">
+                <ul class="pagination pagination-sm mb-0">
+                    <li class="page-item @(CurrentPage == 1 ? "disabled" : "")">
+                        <button class="page-link" @onclick="() => ChangePage(CurrentPage - 1)" aria-label="Previous">
+                            <span aria-hidden="true">&laquo;</span>
+                        </button>
+                    </li>
+                    
+                    @foreach (var pageNum in GetPageNumbers())
+                    {
+                        <li class="page-item @(CurrentPage == pageNum ? "active" : "")">
+                            <button class="page-link" @onclick="() => ChangePage(pageNum)">@pageNum</button>
+                        </li>
+                    }
+
+                    <li class="page-item @(CurrentPage == TotalPages ? "disabled" : "")">
+                        <button class="page-link" @onclick="() => ChangePage(CurrentPage + 1)" aria-label="Next">
+                            <span aria-hidden="true">&raquo;</span>
+                        </button>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </div>
+}
+
+<style>
+    .base-table {
+        margin-bottom: 0;
+    }
+
+    .base-table thead th {
+        background: #f8fafc;
+        padding: 1rem;
+        text-align: left;
+        font-size: 12px;
+        font-weight: 700;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border-bottom: 2px solid #e2e8f0;
+    }
+
+    .base-table tbody tr {
+        background: white;
+        transition: all 0.2s ease;
+    }
+
+    .base-table tbody tr:hover {
+        background-color: #f8fafc;
+    }
+
+    .base-table tbody td {
+        padding: 1rem;
+        border-bottom: 1px solid #f1f5f9;
+        color: #1e293b;
+        font-size: 14px;
+    }
+
+    .page-link {
+        color: #64748b;
+        border: 1px solid #e2e8f0;
+        margin: 0 2px;
+        border-radius: 6px;
+    }
+
+    .page-link:hover {
+        background-color: #f1f5f9;
+        color: #667eea;
+        border-color: #cbd5e1;
+    }
+
+    .page-item.active .page-link {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-color: transparent;
+        color: white;
+    }
+    
+    .page-item.disabled .page-link {
+        color: #cbd5e1;
+        pointer-events: none;
+        background-color: #fff;
+        border-color: #e2e8f0;
+    }
+</style>
+
+@code {
+    [Parameter] public RenderFragment? HeaderContent { get; set; }
+    [Parameter] public RenderFragment? BodyContent { get; set; }
+    [Parameter] public bool IsLoading { get; set; }
+    [Parameter] public bool IsEmpty { get; set; }
+    [Parameter] public string EmptyText { get; set; } = "No data available";
+    [Parameter] public string ContainerClass { get; set; } = "";
+    [Parameter] public string TableClass { get; set; } = "";
+
+    // Pagination Parameters
+    [Parameter] public bool EnablePagination { get; set; }
+    [Parameter] public int TotalItems { get; set; }
+    [Parameter] public int CurrentPage { get; set; } = 1;
+    [Parameter] public int PageSize { get; set; } = 10;
+    [Parameter] public List<int> PageSizeOptions { get; set; } = new() { 5, 10, 20, 50, 100 };
+    [Parameter] public EventCallback<int> OnPageChanged { get; set; }
+    [Parameter] public EventCallback<int> OnPageSizeChanged { get; set; }
+
+    private int TotalPages => (int)Math.Ceiling((double)TotalItems / PageSize);
+    private int StartItem => Math.Min((CurrentPage - 1) * PageSize + 1, TotalItems);
+    private int EndItem => Math.Min(CurrentPage * PageSize, TotalItems);
+
+    private async Task ChangePage(int page)
+    {
+        if (page < 1 || page > TotalPages) return;
+        await OnPageChanged.InvokeAsync(page);
+    }
+
+    private async Task OnPageSizeChange(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int newSize))
+        {
+            await OnPageSizeChanged.InvokeAsync(newSize);
+        }
+    }
+
+    private IEnumerable<int> GetPageNumbers()
+    {
+        // Simple logic to show a window of pages
+        // Can be enhanced to show ellipsis (...) for large page counts
+        var pages = new List<int>();
+        int start = Math.Max(1, CurrentPage - 2);
+        int end = Math.Min(TotalPages, start + 4);
+        
+        if (end - start < 4)
+        {
+            start = Math.Max(1, end - 4);
+        }
+
+        for (int i = start; i <= end; i++)
+        {
+            pages.Add(i);
+        }
+        return pages;
+    }
+}

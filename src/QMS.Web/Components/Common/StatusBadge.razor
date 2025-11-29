@@ -1,0 +1,100 @@
+@using QMS.Domain.Enums
+
+<span class="status-badge @GetStatusClass()">
+    @if (ChildContent != null)
+    {
+        @ChildContent
+    }
+    else
+    {
+        @Text
+    }
+</span>
+
+<style>
+    .status-badge {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+    }
+
+    /* Ticket Statuses */
+    .badge-completed { background: #d1fae5; color: #065f46; }
+    .badge-waiting { background: #fef3c7; color: #92400e; }
+    .badge-serving, .badge-called { background: #dbeafe; color: #1e40af; }
+    .badge-missed, .badge-cancelled { background: #fee2e2; color: #991b1b; }
+    
+    /* Counter Statuses */
+    .badge-online { background: #d1fae5; color: #065f46; }
+    .badge-offline { background: #f3f4f6; color: #374151; }
+    .badge-busy { background: #fee2e2; color: #991b1b; }
+    .badge-paused { background: #fef3c7; color: #92400e; }
+    
+    /* Common Statuses */
+    .badge-active { background: #d1fae5; color: #065f46; }
+    .badge-inactive { background: #fee2e2; color: #991b1b; }
+    
+    /* Generic Colors */
+    .badge-success { background: #d1fae5; color: #065f46; }
+    .badge-warning { background: #fef3c7; color: #92400e; }
+    .badge-info { background: #dbeafe; color: #1e40af; }
+    .badge-danger { background: #fee2e2; color: #991b1b; }
+    .badge-secondary { background: #f3f4f6; color: #374151; }
+</style>
+
+@code {
+    [Parameter] public string? Status { get; set; }
+    [Parameter] public TicketStatus? TicketStatus { get; set; }
+    [Parameter] public CounterStatus? CounterStatus { get; set; }
+    [Parameter] public string? Text { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        if (string.IsNullOrEmpty(Text))
+        {
+            if (TicketStatus.HasValue) Text = TicketStatus.Value.ToString();
+            else if (CounterStatus.HasValue) Text = CounterStatus.Value.ToString();
+            else if (!string.IsNullOrEmpty(Status)) Text = Status;
+        }
+    }
+
+    private string GetStatusClass()
+    {
+        if (TicketStatus.HasValue)
+        {
+            return TicketStatus.Value switch
+            {
+                QMS.Domain.Enums.TicketStatus.Completed => "badge-completed",
+                QMS.Domain.Enums.TicketStatus.Waiting => "badge-waiting",
+                QMS.Domain.Enums.TicketStatus.Called => "badge-called",
+                QMS.Domain.Enums.TicketStatus.Serving => "badge-serving",
+                QMS.Domain.Enums.TicketStatus.Missed => "badge-missed",
+                QMS.Domain.Enums.TicketStatus.Cancelled => "badge-cancelled",
+                _ => "badge-secondary"
+            };
+        }
+
+        if (CounterStatus.HasValue)
+        {
+            return CounterStatus.Value switch
+            {
+                QMS.Domain.Enums.CounterStatus.Online => "badge-online",
+                QMS.Domain.Enums.CounterStatus.Offline => "badge-offline",
+                QMS.Domain.Enums.CounterStatus.Busy => "badge-busy",
+                QMS.Domain.Enums.CounterStatus.Break => "badge-paused",
+                _ => "badge-secondary"
+            };
+        }
+
+        if (!string.IsNullOrEmpty(Status))
+        {
+            return $"badge-{Status.ToLower()}";
+        }
+
+        return "badge-secondary";
+    }
+}

@@ -1,0 +1,194 @@
+@if (IsVisible)
+{
+    <div class="base-toast position-fixed toast-@Position toast-@Variant show" role="alert">
+        <div class="toast-header border-0">
+            @if (!string.IsNullOrEmpty(Icon))
+            {
+                <i class="@Icon me-2 toast-icon"></i>
+            }
+            <strong class="me-auto toast-title">@Title</strong>
+            @if (!string.IsNullOrEmpty(Time))
+            {
+                <small class="text-muted">@Time</small>
+            }
+            @if (Dismissible)
+            {
+                <button type="button" class="btn-close btn-close-sm" @onclick="Dismiss"></button>
+            }
+        </div>
+        @if (!string.IsNullOrEmpty(Message) || ChildContent != null)
+        {
+            <div class="toast-body">
+                @if (!string.IsNullOrEmpty(Message))
+                {
+                    @Message
+                }
+                @ChildContent
+            </div>
+        }
+    </div>
+}
+
+<style>
+    .base-toast {
+        z-index: 9999;
+        min-width: 300px;
+        max-width: 400px;
+        border-radius: 12px;
+        border: none;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+        animation: slideInToast 0.3s ease-out;
+    }
+
+    .toast-top-right {
+        top: 1rem;
+        right: 1rem;
+    }
+
+    .toast-top-left {
+        top: 1rem;
+        left: 1rem;
+    }
+
+    .toast-bottom-right {
+        bottom: 1rem;
+        right: 1rem;
+    }
+
+    .toast-bottom-left {
+        bottom: 1rem;
+        left: 1rem;
+    }
+
+    .toast-top-center {
+        top: 1rem;
+        left: 50%;
+        transform: translateX(-50%);
+    }
+
+    .toast-bottom-center {
+        bottom: 1rem;
+        left: 50%;
+        transform: translateX(-50%);
+    }
+
+    .base-toast.toast-success {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+    }
+
+    .base-toast.toast-error {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        color: white;
+    }
+
+    .base-toast.toast-warning {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        color: white;
+    }
+
+    .base-toast.toast-info {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        color: white;
+    }
+
+    .base-toast.toast-default {
+        background: white;
+        color: #1e293b;
+    }
+
+    .toast-header {
+        background: transparent;
+        padding: 0.75rem 1rem;
+    }
+
+    .toast-title {
+        font-weight: 600;
+        font-size: 14px;
+    }
+
+    .toast-body {
+        padding: 0.5rem 1rem 0.75rem;
+        font-size: 13px;
+    }
+
+    .toast-icon {
+        font-size: 18px;
+    }
+
+    .base-toast .btn-close {
+        filter: brightness(0) invert(1);
+        opacity: 0.7;
+    }
+
+    .base-toast.toast-default .btn-close {
+        filter: none;
+    }
+
+    .base-toast .btn-close:hover {
+        opacity: 1;
+    }
+
+    @@keyframes slideInToast {
+        from {
+            opacity: 0;
+            transform: translateX(100px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+
+    .toast-top-center, .toast-bottom-center {
+        animation: slideInToastCenter 0.3s ease-out;
+    }
+
+    @@keyframes slideInToastCenter {
+        from {
+            opacity: 0;
+            transform: translate(-50%, -20px);
+        }
+        to {
+            opacity: 1;
+            transform: translate(-50%, 0);
+        }
+    }
+</style>
+
+@code {
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public string? Message { get; set; }
+    [Parameter] public string? Icon { get; set; }
+    [Parameter] public string? Time { get; set; }
+    [Parameter] public string Variant { get; set; } = "default"; // success, error, warning, info, default
+    [Parameter] public string Position { get; set; } = "top-right"; // top-right, top-left, bottom-right, bottom-left, top-center, bottom-center
+    [Parameter] public bool Dismissible { get; set; } = true;
+    [Parameter] public int AutoHideDelay { get; set; } = 5000; // milliseconds, 0 = no auto hide
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public EventCallback OnDismiss { get; set; }
+
+    private bool IsVisible = true;
+    private System.Threading.Timer? autoHideTimer;
+
+    protected override void OnInitialized()
+    {
+        if (AutoHideDelay > 0)
+        {
+            autoHideTimer = new System.Threading.Timer(_ => InvokeAsync(Dismiss), null, AutoHideDelay, System.Threading.Timeout.Infinite);
+        }
+    }
+
+    private async Task Dismiss()
+    {
+        IsVisible = false;
+        autoHideTimer?.Dispose();
+        await OnDismiss.InvokeAsync();
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        autoHideTimer?.Dispose();
+    }
+}

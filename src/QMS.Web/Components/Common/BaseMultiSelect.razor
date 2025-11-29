@@ -1,0 +1,183 @@
+@typeparam TValue
+
+<div class="base-multiselect position-relative @ContainerClass">
+    @if (!string.IsNullOrEmpty(Label))
+    {
+        <label class="form-label fw-semibold text-secondary small text-uppercase mb-1">@Label</label>
+    }
+    
+    <div class="dropdown w-100">
+        <button class="form-select text-start d-flex justify-content-between align-items-center @InputClass @(isOpen ? "show" : "")" 
+                type="button" 
+                @onclick="ToggleDropdown" 
+                disabled="@Disabled">
+            <span class="text-truncate">
+                @GetDisplayText()
+            </span>
+            <i class="bi bi-chevron-down small transition-icon @(isOpen ? "rotate-180" : "")"></i>
+        </button>
+        
+        @if (isOpen)
+        {
+            <div class="dropdown-menu show w-100 p-2 shadow-lg border-0 mt-1" style="max-height: 300px; overflow-y: auto;">
+                @if (ShowSelectAll && Items != null && Items.Any())
+                {
+                    <div class="form-check px-3 py-2 hover-bg rounded cursor-pointer" @onclick="ToggleSelectAll">
+                        <input class="form-check-input" type="checkbox" checked="@IsAllSelected" readonly />
+                        <label class="form-check-label fw-bold cursor-pointer w-100">
+                            Select All
+                        </label>
+                    </div>
+                    <div class="dropdown-divider my-1"></div>
+                }
+                
+                @if (Items != null)
+                {
+                    @foreach (var item in Items)
+                    {
+                        <div class="form-check px-3 py-2 hover-bg rounded cursor-pointer" @onclick="() => ToggleItem(item.Key)">
+                            <input class="form-check-input" type="checkbox" 
+                                   checked="@(SelectedValues.Contains(item.Key))" 
+                                   readonly />
+                            <label class="form-check-label cursor-pointer w-100">
+                                @item.Value
+                            </label>
+                        </div>
+                    }
+                }
+
+                @if (Items == null || !Items.Any())
+                {
+                    <div class="text-muted text-center py-2 small">No items available</div>
+                }
+            </div>
+            
+            <!-- Invisible backdrop to close dropdown when clicking outside -->
+            <div class="position-fixed top-0 start-0 w-100 h-100" style="z-index: 999; background: transparent;" @onclick="CloseDropdown"></div>
+        }
+    </div>
+</div>
+
+<style>
+    .base-multiselect .dropdown-menu {
+        z-index: 1000;
+        border-radius: 12px;
+        animation: slideDown 0.2s ease-out;
+    }
+
+    .base-multiselect .form-select {
+        border-radius: 10px;
+        border: 2px solid #e2e8f0;
+        padding: 0.75rem 1rem;
+        font-size: 14px;
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+
+    .base-multiselect .form-select:focus, 
+    .base-multiselect .form-select.show {
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        outline: none;
+    }
+
+    .hover-bg:hover {
+        background-color: #f8fafc;
+    }
+    
+    .cursor-pointer {
+        cursor: pointer;
+    }
+
+    .transition-icon {
+        transition: transform 0.2s ease;
+    }
+
+    .rotate-180 {
+        transform: rotate(180deg);
+    }
+
+    @@keyframes slideDown {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+</style>
+
+@code {
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public IEnumerable<KeyValuePair<TValue, string>> Items { get; set; } = Enumerable.Empty<KeyValuePair<TValue, string>>();
+    [Parameter] public List<TValue> SelectedValues { get; set; } = new();
+    [Parameter] public EventCallback<List<TValue>> SelectedValuesChanged { get; set; }
+    [Parameter] public string Placeholder { get; set; } = "Select items...";
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public string InputClass { get; set; } = "";
+    [Parameter] public string ContainerClass { get; set; } = "mb-3";
+    [Parameter] public bool ShowSelectAll { get; set; } = true;
+
+    private bool isOpen = false;
+    private string UniqueId = Guid.NewGuid().ToString("N");
+
+    private bool IsAllSelected => Items != null && Items.Any() && SelectedValues.Count == Items.Count();
+
+    private void ToggleDropdown()
+    {
+        if (!Disabled)
+        {
+            isOpen = !isOpen;
+        }
+    }
+
+    private void CloseDropdown()
+    {
+        isOpen = false;
+    }
+
+    private async Task ToggleSelectAll()
+    {
+        if (IsAllSelected)
+        {
+            SelectedValues.Clear();
+        }
+        else
+        {
+            SelectedValues = Items.Select(x => x.Key).ToList();
+        }
+        await SelectedValuesChanged.InvokeAsync(SelectedValues);
+    }
+
+    private async Task ToggleItem(TValue key)
+    {
+        if (SelectedValues.Contains(key))
+        {
+            SelectedValues.Remove(key);
+        }
+        else
+        {
+            SelectedValues.Add(key);
+        }
+        await SelectedValuesChanged.InvokeAsync(SelectedValues);
+    }
+
+    private string GetDisplayText()
+    {
+        if (SelectedValues == null || !SelectedValues.Any())
+        {
+            return Placeholder;
+        }
+
+        if (IsAllSelected)
+        {
+            return $"All Selected ({SelectedValues.Count})";
+        }
+
+        if (SelectedValues.Count <= 2)
+        {
+            var selectedLabels = Items
+                .Where(x => SelectedValues.Contains(x.Key))
+                .Select(x => x.Value);
+            return string.Join(", ", selectedLabels);
+        }
+
+        return $"{SelectedValues.Count} Selected";
+    }
+}

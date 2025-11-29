@@ -1,0 +1,999 @@
+@page "/tm/counters"
+@using QMS.Application.Interfaces
+@using QMS.Domain.Entities
+@using QMS.Web.Services
+@using QMS.Web.Components.Layout
+@using Microsoft.Extensions.DependencyInjection
+@inject ICounterService CounterService
+@inject IUserService UserService
+@inject QMS.Domain.Interfaces.IRepository<QMS.Domain.Entities.ServiceType> ServiceTypeRepository
+@inject QMS.Domain.Interfaces.IRepository<QMS.Domain.Entities.CounterServiceType> CounterServiceTypeRepository
+@inject QMS.Domain.Interfaces.IUnitOfWork UnitOfWork
+@inject NavigationManager Navigation
+
+@inject QMS.Web.Services.AuthenticationStateService AuthState
+@inject IQmsNotificationService NotificationService
+@inject IServiceScopeFactory ScopeFactory
+@layout TMLayout
+@rendermode InteractiveServer
+
+<style>
+    .counters-page {
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+
+    .page-header {
+        background: white;
+        border-radius: 20px;
+        padding: 2rem;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        margin-bottom: 2rem;
+    }
+
+    .page-title {
+        font-size: 32px;
+        font-weight: 800;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .counters-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .counter-card {
+        background: white;
+        border-radius: 16px;
+        padding: 1.5rem;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s ease;
+        border: 2px solid transparent;
+    }
+
+    .counter-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+        border-color: #667eea;
+    }
+
+    .counter-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+        margin-bottom: 1rem;
+    }
+
+    .counter-name {
+        font-size: 20px;
+        font-weight: 700;
+        color: #1e293b;
+    }
+
+    .counter-prefix {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 0.25rem 0.75rem;
+        border-radius: 8px;
+        font-size: 12px;
+        font-weight: 700;
+    }
+
+    .counter-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 700;
+        margin-bottom: 1rem;
+    }
+
+    .counter-status.online {
+        background: #d1fae5;
+        color: #065f46;
+    }
+
+    .counter-status.busy {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .counter-status.break {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+
+    .counter-status.offline {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .counter-status i {
+        font-size: 8px;
+    }
+
+    .assigned-user {
+        background: #f8fafc;
+        border-radius: 12px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .assigned-label {
+        font-size: 11px;
+        text-transform: uppercase;
+        color: #94a3b8;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+
+    .user-info-compact {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .user-avatar-small {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: 700;
+        font-size: 12px;
+    }
+
+    .user-name-small {
+        font-weight: 600;
+        color: #1e293b;
+        font-size: 14px;
+    }
+
+    .counter-services {
+        background: #f8fafc;
+        border-radius: 12px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .services-label {
+        font-size: 11px;
+        text-transform: uppercase;
+        color: #94a3b8;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+
+    .service-badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .service-badge {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 0.25rem 0.75rem;
+        border-radius: 8px;
+        font-size: 11px;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+
+    .service-badge.backup {
+        background: #e2e8f0;
+        color: #64748b;
+    }
+
+    .service-badge i {
+        font-size: 10px;
+    }
+
+    .edit-services-btn {
+        background: transparent;
+        border: none;
+        color: #667eea;
+        cursor: pointer;
+        padding: 0.25rem 0.5rem;
+        border-radius: 6px;
+        font-size: 11px;
+        font-weight: 600;
+        transition: all 0.2s;
+        margin-left: auto;
+    }
+
+    .edit-services-btn:hover {
+        background: #f0f3ff;
+    }
+
+    .services-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 0.5rem;
+    }
+
+    .service-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.75rem;
+        background: white;
+        border: 2px solid #e2e8f0;
+        border-radius: 10px;
+        margin-bottom: 0.5rem;
+        transition: all 0.2s;
+    }
+
+    .service-item:hover {
+        border-color: #667eea;
+        background: #f8f9ff;
+    }
+
+    .service-item-left {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .service-checkbox {
+        width: 20px;
+        height: 20px;
+        cursor: pointer;
+    }
+
+    .service-name {
+        font-weight: 600;
+        color: #1e293b;
+    }
+
+    .primary-toggle {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 12px;
+        color: #64748b;
+    }
+
+    .toggle-switch {
+        position: relative;
+        width: 40px;
+        height: 20px;
+        background: #e2e8f0;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+
+    .toggle-switch.active {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .toggle-slider {
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        width: 16px;
+        height: 16px;
+        background: white;
+        border-radius: 50%;
+        transition: all 0.3s;
+    }
+
+    .toggle-switch.active .toggle-slider {
+        transform: translateX(20px);
+    }
+
+    .counter-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .btn-assign {
+        flex: 1;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        padding: 0.75rem;
+        border-radius: 10px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-size: 14px;
+    }
+
+    .btn-assign:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-assign:disabled {
+        background: #94a3b8;
+        cursor: not-allowed;
+        opacity: 0.6;
+    }
+
+    .btn-unassign {
+        flex: 1;
+        background: #ef4444;
+        color: white;
+        border: none;
+        padding: 0.75rem;
+        border-radius: 10px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-size: 14px;
+    }
+
+    .btn-unassign:hover {
+        background: #dc2626;
+        transform: translateY(-2px);
+    }
+
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+    }
+
+    .modal-content {
+        background: white;
+        border-radius: 20px;
+        padding: 2rem;
+        max-width: 500px;
+        width: 90%;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+
+    .modal-title {
+        font-size: 24px;
+        font-weight: 700;
+        color: #1e293b;
+        margin-bottom: 1.5rem;
+    }
+
+    .form-label {
+        font-size: 13px;
+        font-weight: 600;
+        color: #64748b;
+        margin-bottom: 0.5rem;
+        text-transform: uppercase;
+    }
+
+    .form-select-custom {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        border: 2px solid #e2e8f0;
+        border-radius: 10px;
+        font-size: 14px;
+        margin-bottom: 1rem;
+    }
+
+    .form-select-custom:focus {
+        border-color: #667eea;
+        outline: none;
+    }
+
+    .modal-actions {
+        display: flex;
+        gap: 1rem;
+        margin-top: 1.5rem;
+    }
+
+    .btn-modal {
+        flex: 1;
+        padding: 0.75rem;
+        border: none;
+        border-radius: 10px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .btn-modal.primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+
+    .btn-modal.secondary {
+        background: #f1f5f9;
+        color: #64748b;
+    }
+
+    .btn-modal:hover {
+        transform: translateY(-2px);
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 3rem;
+        color: #94a3b8;
+    }
+
+    .empty-state i {
+        font-size: 64px;
+        margin-bottom: 1rem;
+        opacity: 0.3;
+    }
+</style>
+
+<div class="counters-page">
+    <!-- Header -->
+    <div class="page-header mb-4">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h2 class="mb-1">
+                <i class="bi bi-bank2 me-2 text-primary"></i>
+                Counter Management
+            </h2>
+            <p class="text-muted mb-0">Assign and manage tellers for counters in your branch</p>
+        </div>
+        <button class="btn btn-outline-primary" @onclick="RefreshData" disabled="@isLoading">
+            <i class="bi bi-arrow-clockwise me-2"></i>
+            @(isLoading ? "Refreshing..." : "Refresh")
+        </button>
+    </div>
+</div>
+
+    <!-- Auth Check Loading -->
+    @if (isCheckingAuth)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Verifying access...</span>
+            </div>
+            <p class="text-muted mt-3">Verifying your access permissions...</p>
+        </div>
+    }
+    else
+    {
+        <!-- Counters Grid -->
+        @if (counters == null)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else if (!counters.Any())
+    {
+        <div class="empty-state">
+            <i class="bi bi-shop"></i>
+            <h4>No Counters Found</h4>
+            <p>There are no counters in your branch</p>
+        </div>
+    }
+    else
+    {
+        <div class="counters-grid">
+            @foreach (var counter in counters)
+            {
+                <div class="counter-card">
+                    <div class="counter-header">
+                        <div class="counter-name">@counter.Name</div>
+                        <div class="counter-prefix">@counter.Prefix</div>
+                    </div>
+
+                    @{
+                        var statusClass = counter.Status switch
+                        {
+                            QMS.Domain.Enums.CounterStatus.Online => "online",
+                            QMS.Domain.Enums.CounterStatus.Busy => "busy",
+                            QMS.Domain.Enums.CounterStatus.Break => "break",
+                            QMS.Domain.Enums.CounterStatus.Offline => "offline",
+                            _ => "offline"
+                        };
+                        var statusText = counter.Status.ToString();
+                    }
+                    <div class="counter-status @statusClass">
+                        <i class="bi bi-circle-fill"></i>
+                        <span>@statusText</span>
+                    </div>
+
+                    <div class="assigned-user">
+                        <div class="assigned-label">Assigned Teller</div>
+                        @if (counter.AssignedUserId.HasValue)
+                        {
+                            var user = GetUserById(counter.AssignedUserId.Value);
+                            if (user != null)
+                            {
+                                <div class="user-info-compact">
+                                    <div class="user-avatar-small">
+                                        @GetInitials(user.FullName)
+                                    </div>
+                                    <div class="user-name-small">@user.FullName</div>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="text-muted small">User not found</div>
+                            }
+                        }
+                        else
+                        {
+                            <div class="text-muted small">No teller assigned</div>
+                        }
+                    </div>
+ 
+                    <div class="counter-services">
+                        <div class="services-header">
+                            <div class="services-label">Services</div>
+                            <button class="edit-services-btn" @onclick="() => OpenEditServicesModal(counter)">
+                                <i class="bi bi-pencil"></i> Edit
+                            </button>
+                        </div>
+                        <div class="service-badges">
+                            @if (counter.ServiceTypes != null && counter.ServiceTypes.Any())
+                            {
+                                @foreach (var service in counter.ServiceTypes.OrderBy(s => s.Priority))
+                                {
+                                    <span class="service-badge @(service.IsPrimary ? "" : "backup")" title="@(service.IsPrimary ? "Primary" : "Backup")">
+                                        @if (service.IsPrimary)
+                                        {
+                                            <i class="bi bi-star-fill"></i>
+                                        }
+                                        @service.ServiceType?.Name
+                                    </span>
+                                }
+                            }
+                            else
+                            {
+                                <span class="text-muted small">No services configured</span>
+                            }
+                        </div>
+                    </div> 
+
+                    <div class="counter-actions">
+                        @{
+                            var isCounterOnline = counter.Status == QMS.Domain.Enums.CounterStatus.Online || counter.Status == QMS.Domain.Enums.CounterStatus.Busy;
+                        }
+                        @if (!isCounterOnline || !counter.AssignedUserId.HasValue)
+                        {
+                            <button class="btn-assign" @onclick="() => OpenAssignModal(counter)">
+                                <i class="bi bi-person-plus me-2"></i>
+                                @(counter.AssignedUserId.HasValue ? "Reassign" : "Assign")
+                            </button>
+                        }
+                        else
+                        {
+                            <button class="btn-assign" disabled title="Cannot assign while counter is online">
+                                <i class="bi bi-lock me-2"></i>
+                                Counter Online
+                            </button>
+                        }
+                        @if (counter.AssignedUserId.HasValue && !isCounterOnline)
+                        {
+                            <button class="btn-unassign" @onclick="() => UnassignTeller(counter)">
+                                <i class="bi bi-person-x"></i>
+                            </button>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    }
+    }
+</div>
+
+<!-- Assign Modal -->
+@if (showAssignModal && selectedCounter != null)
+{
+    <div class="modal-overlay" @onclick="CloseAssignModal">
+        <div class="modal-content" @onclick:stopPropagation="true">
+            <div class="modal-title">
+                <i class="bi bi-person-plus me-2"></i>
+                Assign Teller to @selectedCounter.Name
+            </div>
+
+            <div>
+                <div class="form-label">Select Teller</div>
+                <select class="form-select-custom" @bind="selectedTellerId">
+                    <option value="">-- Select a teller --</option>
+                    @if (availableTellers != null)
+                    {
+                        @foreach (var teller in availableTellers)
+                        {
+                            <option value="@teller.Id">@teller.FullName (@teller.Email)</option>
+                        }
+                    }
+                </select>
+                @if (availableTellers != null && !availableTellers.Any())
+                {
+                    <div class="text-warning small mt-2">
+                        <i class="bi bi-exclamation-triangle me-1"></i>
+                        All tellers are currently assigned to counters
+                    </div>
+                }
+            </div>
+
+            <div>
+                <div class="form-label">Notes (Optional)</div>
+                <textarea class="form-select-custom" rows="3" @bind="assignmentNotes" placeholder="Add any notes about this assignment..."></textarea>
+            </div>
+
+            <div class="modal-actions">
+                <button class="btn-modal secondary" @onclick="CloseAssignModal">Cancel</button>
+                <button class="btn-modal primary" @onclick="ConfirmAssignment">
+                    <i class="bi bi-check-circle me-2"></i>
+                    Assign
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Edit Services Modal -->
+@if (showEditServicesModal && selectedCounter != null)
+{
+    <div class="modal-overlay" @onclick="CloseEditServicesModal">
+        <div class="modal-content" @onclick:stopPropagation="true" style="max-width: 600px;">
+            <div class="modal-title">
+                <i class="bi bi-gear me-2"></i>
+                Configure Services for @selectedCounter.Name
+            </div>
+
+            <div style="margin-bottom: 1rem;">
+                <p style="color: #64748b; font-size: 14px; margin: 0;">
+                    Select which services this counter can handle. Mark primary services with the toggle.
+                </p>
+            </div>
+
+            <div>
+                @if (allServiceTypes != null)
+                {
+                    @foreach (var serviceType in allServiceTypes)
+                    {
+                        var isSelected = editingServices.Any(s => s.ServiceTypeId == serviceType.Id);
+                        var isPrimary = editingServices.FirstOrDefault(s => s.ServiceTypeId == serviceType.Id)?.IsPrimary ?? false;
+                        
+                        <div class="service-item">
+                            <div class="service-item-left">
+                                <input type="checkbox" 
+                                       class="service-checkbox" 
+                                       checked="@isSelected"
+                                       @onchange="(e) => ToggleService(serviceType.Id, (bool)e.Value!)" />
+                                <span class="service-name">@serviceType.Name</span>
+                            </div>
+                            
+                            @if (isSelected)
+                            {
+                                <div class="primary-toggle">
+                                    <span>Primary</span>
+                                    <div class="toggle-switch @(isPrimary ? "active" : "")" 
+                                         @onclick="() => TogglePrimary(serviceType.Id)"
+                                         >
+                                        <div class="toggle-slider"></div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                }
+            </div>
+
+            <div class="modal-actions">
+                <button class="btn-secondary" @onclick="CloseEditServicesModal">
+                    <i class="bi bi-x-lg me-2"></i>
+                    Cancel
+                </button>
+                <button class="btn-primary" @onclick="SaveServices">
+                    <i class="bi bi-check-lg me-2"></i>
+                    Save Changes
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private IEnumerable<Counter>? counters;
+    private IEnumerable<User>? tellers;
+    private IEnumerable<User>? availableTellers => GetAvailableTellers();
+    private bool showAssignModal = false;
+    private Counter? selectedCounter;
+    private string? selectedTellerId;
+    private string? assignmentNotes;
+    private bool isCheckingAuth = true;
+    private bool isLoading = false;
+    
+    // Edit Services Modal
+    private bool showEditServicesModal = false;
+    private IEnumerable<ServiceType>? allServiceTypes;
+    private List<CounterServiceType> editingServices = new();
+
+
+    private async Task RefreshData()
+    {
+        isLoading = true;
+        StateHasChanged();
+        
+        try
+        {
+            Console.WriteLine("[CounterManagement] === REFRESH STARTED (Scoped) ===");
+            
+            if (!AuthState.BranchId.HasValue)
+            {
+                Console.WriteLine("[CounterManagement] No BranchId - cannot refresh");
+                return;
+            }
+            
+            // Create a new scope to get a fresh DbContext
+            // This bypasses the existing DbContext's tracking cache
+            using (var scope = ScopeFactory.CreateScope())
+            {
+                var scopedCounterService = scope.ServiceProvider.GetRequiredService<ICounterService>();
+                var scopedUserService = scope.ServiceProvider.GetRequiredService<IUserService>();
+                var scopedServiceTypeRepo = scope.ServiceProvider.GetRequiredService<IRepository<ServiceType>>();
+                
+                Console.WriteLine($"[CounterManagement] Loading fresh data for branch {AuthState.BranchId.Value}");
+                
+                // Load counters from fresh scope
+                var loadedCounters = await scopedCounterService.GetCountersByBranchAsync(AuthState.BranchId.Value);
+                counters = loadedCounters?.ToList();
+
+                
+                // Load tellers from fresh scope
+                var loadedTellers = await scopedUserService.GetTellersByBranchAsync(AuthState.BranchId.Value);
+                tellers = loadedTellers?.ToList();
+                
+                // Load service types
+                allServiceTypes = (await scopedServiceTypeRepo.GetAllAsync())?.Where(s => s.IsActive).ToList();
+            }
+            
+            Console.WriteLine($"[CounterManagement] Loaded {counters?.Count() ?? 0} counters and {tellers?.Count() ?? 0} tellers");
+            
+            // Log counter details
+            if (counters != null)
+            {
+                foreach (var counter in counters)
+                {
+                    Console.WriteLine($"[CounterManagement] Counter {counter.Id} ({counter.Name}): Status={counter.Status}, AssignedUserId={counter.AssignedUserId}");
+                }
+            }
+            
+            Console.WriteLine("[CounterManagement] === REFRESH COMPLETED ===");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[CounterManagement] Refresh error: {ex.Message}");
+            Console.WriteLine($"[CounterManagement] Stack trace: {ex.StackTrace}");
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Initial check - but don't redirect yet if we might be able to restore session
+        if (AuthState.IsAuthenticated && AuthState.UserRole == "TM")
+        {
+            isCheckingAuth = false;
+            if (AuthState.BranchId.HasValue)
+            {
+                await LoadData();
+                StateHasChanged();
+            }
+        }
+    }
+    public void SaveServices()
+    {
+        
+    }   
+    public void ToggleService(int serviceTypeId, bool isChecked)
+    {
+        var service = editingServices.FirstOrDefault(s => s.ServiceTypeId == serviceTypeId);
+        if (service != null)
+        {
+            service.IsPrimary = isChecked;
+        }
+    }
+    public void TogglePrimary(int serviceTypeId)
+    {
+        var service = editingServices.FirstOrDefault(s => s.ServiceTypeId == serviceTypeId);
+        if (service != null)
+        {
+            service.IsPrimary = !service.IsPrimary;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            if (!AuthState.IsAuthenticated)
+            {
+                Navigation.NavigateTo("/");
+            }
+            else
+            {
+                isCheckingAuth = false;
+                StateHasChanged();
+            }
+        }
+    }
+    
+    private void OpenEditServicesModal(Counter counter)
+    {
+        selectedCounter = counter;
+        showEditServicesModal = true;
+    }
+
+    private void CloseEditServicesModal()
+    {
+        showEditServicesModal = false;
+        selectedCounter = null;
+    }
+
+    private async Task LoadData()
+    {
+        try 
+        {
+            if (!AuthState.BranchId.HasValue) 
+            {
+                Console.WriteLine("[CounterManagement] LoadData skipped: No BranchId");
+                return;
+            }
+
+            Console.WriteLine($"[CounterManagement] Loading data for branch {AuthState.BranchId}");
+            
+            // Use a fresh scope to ensure we get the latest data from DB
+            using (var scope = ScopeFactory.CreateScope())
+            {
+                var scopedCounterService = scope.ServiceProvider.GetRequiredService<ICounterService>();
+                var scopedUserService = scope.ServiceProvider.GetRequiredService<IUserService>();
+                var scopedServiceTypeRepo = scope.ServiceProvider.GetRequiredService<IRepository<ServiceType>>();
+
+                counters = (await scopedCounterService.GetCountersByBranchAsync(AuthState.BranchId.Value))?.ToList();
+                tellers = (await scopedUserService.GetTellersByBranchAsync(AuthState.BranchId.Value))?.ToList();
+                allServiceTypes = (await scopedServiceTypeRepo.GetAllAsync())?.Where(s => s.IsActive).ToList();
+            }
+            
+            Console.WriteLine($"[CounterManagement] Loaded {counters?.Count() ?? 0} counters and {tellers?.Count() ?? 0} tellers");
+            
+            // Log each counter's status for debugging
+            if (counters != null)
+            {
+                foreach (var counter in counters)
+                {
+                    Console.WriteLine($"[CounterManagement] Counter {counter.Id} ({counter.Name}): Status={counter.Status}, AssignedUserId={counter.AssignedUserId}");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[CounterManagement] Error in LoadData: {ex}");
+            // Optionally set an error message to display to the user
+        }
+    }
+
+    private IEnumerable<User>? GetAvailableTellers()
+    {
+        if (tellers == null || counters == null) return tellers;
+
+        // Get all assigned user IDs from counters (excluding the currently selected counter)
+        var assignedUserIds = counters
+            .Where(c => c.AssignedUserId.HasValue && c.Id != selectedCounter?.Id)
+            .Select(c => c.AssignedUserId!.Value)
+            .ToHashSet();
+
+        // Filter out users who are already assigned
+        return tellers.Where(t => !assignedUserIds.Contains(t.Id));
+    }
+
+    // Real-time functionality removed as per request. 
+    // Data is refreshed manually via the Refresh button.
+
+    private User? GetUserById(int userId)
+    {
+        return tellers?.FirstOrDefault(u => u.Id == userId);
+    }
+
+    private string GetInitials(string name)
+    {
+        if (string.IsNullOrEmpty(name)) return "??";
+        var parts = name.Split(' ');
+        if (parts.Length >= 2)
+            return $"{parts[0][0]}{parts[^1][0]}".ToUpper();
+        return name.Substring(0, Math.Min(2, name.Length)).ToUpper();
+    }
+
+    private void OpenAssignModal(Counter counter)
+    {
+        selectedCounter = counter;
+        selectedTellerId = counter.AssignedUserId?.ToString();
+        assignmentNotes = null;
+        showAssignModal = true;
+    }
+
+    private void CloseAssignModal()
+    {
+        showAssignModal = false;
+        selectedCounter = null;
+        selectedTellerId = null;
+        assignmentNotes = null;
+    }
+
+    private async Task ConfirmAssignment()
+    {
+        if (selectedCounter == null || string.IsNullOrEmpty(selectedTellerId))
+            return;
+
+        try
+        {
+            var tellerId = int.Parse(selectedTellerId);
+            
+            // Check if this teller is already assigned to another counter
+            var existingAssignment = counters?.FirstOrDefault(c => 
+                c.AssignedUserId == tellerId && c.Id != selectedCounter.Id);
+            
+            if (existingAssignment != null)
+            {
+                // Unassign from old counter first
+                Console.WriteLine($"[CounterManagement] Teller {tellerId} is already assigned to counter {existingAssignment.Id}. Unassigning first...");
+                await CounterService.UnassignTellerFromCounterAsync(
+                    existingAssignment.Id,
+                    AuthState.UserName ?? "System",
+                    $"Auto-unassigned: Teller reassigned to counter {selectedCounter.Id}"
+                );
+            }
+            
+            // Assign to new counter
+            await CounterService.AssignTellerToCounterAsync(
+                selectedCounter.Id,
+                tellerId,
+                AuthState.UserName,
+                assignmentNotes
+            );
+
+            CloseAssignModal();
+            await LoadData();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error assigning teller: {ex.Message}");
+        }
+    }
+
+    private async Task UnassignTeller(Counter counter)
+    {
+        try
+        {
+            await CounterService.UnassignTellerFromCounterAsync(
+                counter.Id,
+                AuthState.UserName,
+                "Unassigned by TM"
+            );
+
+            await LoadData();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error unassigning teller: {ex.Message}");
+        }
+    }
+}
