@@ -6,9 +6,9 @@ namespace QMS.Web.Hubs;
 public class PrinterHub : Hub
 {
     private static readonly ConcurrentDictionary<string, PrinterInfo> ConnectedPrinters = new();
-    private readonly QMS.Core.Interfaces.IRepository<QMS.Domain.Entities.Branch> _branchRepository;
+    private readonly QMS.Domain.Interfaces.IRepository<QMS.Domain.Entities.Branch> _branchRepository;
 
-    public PrinterHub(QMS.Core.Interfaces.IRepository<QMS.Domain.Entities.Branch> branchRepository)
+    public PrinterHub(QMS.Domain.Interfaces.IRepository<QMS.Domain.Entities.Branch> branchRepository)
     {
         _branchRepository = branchRepository;
     }
