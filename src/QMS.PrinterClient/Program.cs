@@ -9,6 +9,7 @@ class Program
     private static HubConnection? _connection;
     private static string _printerName = "Kiosk-Printer-01";
     private static string _location = "Branch 1 - Main Entrance";
+    private static int _branchId = 0; // 0 means not set
 
     static async Task Main(string[] args)
     {
@@ -27,12 +28,25 @@ class Program
         {
             _location = args[1];
         }
+        if (args.Length > 2 && int.TryParse(args[2], out int branchId))
+        {
+            _branchId = branchId;
+        }
+
+        await ConnectToPrinterHub();
+
+        // If Branch ID is not set, ask user to select from database
+        if (_branchId == 0)
+        {
+            await SelectBranch();
+        }
 
         Console.WriteLine($"Printer Name: {_printerName}");
         Console.WriteLine($"Location: {_location}");
+        Console.WriteLine($"Branch ID: {_branchId}");
         Console.WriteLine();
 
-        await ConnectToPrinterHub();
+        await RegisterPrinter();
 
         Console.WriteLine("\nPress 'Q' to quit...");
         while (Console.ReadKey(true).Key != ConsoleKey.Q)
@@ -45,8 +59,12 @@ class Program
 
     static async Task ConnectToPrinterHub()
     {
-        var serverUrl = "http://localhost:5101/printerhub";
+        // Get URL from environment variable or default to localhost
+        var envUrl = Environment.GetEnvironmentVariable("QMS_SERVER_URL");
+        var serverUrl = !string.IsNullOrEmpty(envUrl) ? envUrl : "http://localhost:5101/printerhub";
         
+        Console.WriteLine($"Connecting to {serverUrl}...");
+
         _connection = new HubConnectionBuilder()
             .WithUrl(serverUrl)
             .WithAutomaticReconnect()
@@ -85,15 +103,60 @@ class Program
 
         try
         {
-            Console.WriteLine($"Connecting to {serverUrl}...");
             await _connection.StartAsync();
             Console.WriteLine($"✓ Connected successfully! ID: {_connection.ConnectionId}");
-            
-            await RegisterPrinter();
         }
         catch (Exception ex)
         {
             Console.WriteLine($"✗ Connection failed: {ex.Message}");
+            Console.WriteLine("Please check if the server is running.");
+            Environment.Exit(1);
+        }
+    }
+
+    static async Task SelectBranch()
+    {
+        try
+        {
+            Console.WriteLine("Fetching available branches...");
+            var branches = await _connection!.InvokeAsync<List<dynamic>>("GetBranches");
+
+            if (branches == null || branches.Count == 0)
+            {
+                Console.WriteLine("No branches found in database. Defaulting to Branch ID 1.");
+                _branchId = 1;
+                return;
+            }
+
+            Console.WriteLine("\nAvailable Branches:");
+            Console.WriteLine("═══════════════════════════════════════");
+            for (int i = 0; i < branches.Count; i++)
+            {
+                Console.WriteLine($"[{i + 1}] {branches[i].Name} (Code: {branches[i].Code})");
+            }
+            Console.WriteLine("═══════════════════════════════════════");
+
+            while (true)
+            {
+                Console.Write("\nSelect a branch (enter number): ");
+                string? input = Console.ReadLine();
+
+                if (int.TryParse(input, out int selection) && selection > 0 && selection <= branches.Count)
+                {
+                    var selectedBranch = branches[selection - 1];
+                    _branchId = (int)selectedBranch.Id;
+                    _location = $"{selectedBranch.Name} - Main Entrance"; // Auto-update location based on branch
+                    Console.WriteLine($"✓ Selected: {selectedBranch.Name}");
+                    break;
+                }
+                Console.WriteLine("Invalid selection. Please try again.");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error fetching branches: {ex.Message}");
+            Console.WriteLine("Defaulting to Branch ID 1.");
+            _branchId = 1;
         }
     }
 
@@ -101,8 +164,8 @@ class Program
     {
         try
         {
-            await _connection!.InvokeAsync("RegisterPrinter", _printerName, _location);
-            Console.WriteLine($"✓ Printer registered: {_printerName}");
+            await _connection!.InvokeAsync("RegisterPrinter", _printerName, _location, _branchId);
+            Console.WriteLine($"✓ Printer registered: {_printerName} (Branch: {_branchId})");
             Console.WriteLine("Waiting for print jobs...\n");
         }
         catch (Exception ex)

@@ -1,26 +1,113 @@
 <div class="form-group @ContainerClass">
     @if (!string.IsNullOrEmpty(Label))
     {
-        <label class="form-label fw-semibold text-secondary small text-uppercase mb-1">@Label</label>
+        <label class="form-label fw-semibold text-secondary small text-uppercase mb-2">@Label</label>
     }
-    <select class="form-select @InputClass" value="@Value" @onchange="OnValueChanged" disabled="@Disabled">
-        @ChildContent
-    </select>
+    <div class="select-wrapper">
+        <select class="form-select custom-select @InputClass" value="@Value" @onchange="OnValueChanged" disabled="@Disabled">
+            @ChildContent
+        </select>
+        <i class="bi bi-chevron-down select-icon"></i>
+    </div>
 </div>
 
 <style>
-    .form-select {
-        border-radius: 10px;
-        border: 2px solid #e2e8f0;
-        padding: 0.75rem 1rem;
-        font-size: 14px;
+    .select-wrapper {
+        position: relative;
+        display: block;
+    }
+
+    .select-wrapper .select-icon {
+        position: absolute;
+        right: 1rem;
+        top: 50%;
+        transform: translateY(-50%);
+        pointer-events: none;
+        color: #64748b;
+        font-size: 12px;
         transition: all 0.3s ease;
     }
 
-    .form-select:focus {
+    .custom-select {
+        appearance: none;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        background-color: white;
+        border-radius: 12px;
+        border: 2px solid #e2e8f0;
+        padding: 0.875rem 2.5rem 0.875rem 1rem;
+        font-size: 14px;
+        font-weight: 500;
+        color: #1e293b;
+        width: 100%;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        background-image: none;
+    }
+
+    .custom-select:hover:not(:disabled) {
+        border-color: #cbd5e1;
+        background-color: #f8fafc;
+    }
+
+    .custom-select:focus {
         border-color: #667eea;
-        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
         outline: none;
+        background-color: white;
+    }
+
+    .custom-select:focus + .select-icon {
+        color: #667eea;
+        transform: translateY(-50%) rotate(180deg);
+    }
+
+    .custom-select:disabled {
+        background-color: #f1f5f9;
+        color: #94a3b8;
+        cursor: not-allowed;
+        opacity: 0.6;
+    }
+
+    .custom-select option {
+        padding: 0.75rem 1rem;
+        font-size: 14px;
+        font-weight: 500;
+        color: #1e293b;
+        background-color: white;
+    }
+
+    .custom-select option:hover {
+        background-color: #f8fafc;
+    }
+
+    .custom-select option:checked {
+        background-color: #667eea;
+        color: white;
+    }
+
+    /* Better scrollbar for dropdown */
+    .custom-select {
+        scrollbar-width: thin;
+        scrollbar-color: #cbd5e1 #f1f5f9;
+    }
+
+    .custom-select::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    .custom-select::-webkit-scrollbar-track {
+        background: #f1f5f9;
+        border-radius: 4px;
+    }
+
+    .custom-select::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 4px;
+    }
+
+    .custom-select::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
     }
 </style>
 

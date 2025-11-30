@@ -282,8 +282,8 @@
             
             Console.WriteLine($"[Kiosk] Sending JSON: {jsonData}");
             
-            // Send as string
-            await printerConnection.InvokeAsync("BroadcastPrintJson", jsonData);
+            // Send as string with BranchId
+            await printerConnection.InvokeAsync("BroadcastPrintJson", jsonData, ticket.BranchId);
             
             printSent = true;
             Console.WriteLine("[Kiosk] Print command sent successfully");

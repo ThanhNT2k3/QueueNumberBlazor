@@ -21,7 +21,9 @@
     .counters-page {
         max-width: 1400px;
         margin: 0 auto;
-    }    .counters-grid {
+    }
+
+    .counters-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
         gap: 1.5rem;
@@ -235,10 +237,11 @@
 
 <div class="counters-page">
     <!-- Header -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <PageHeader Title="Counter Management" 
-                    Subtitle="Assign and manage tellers for counters in your branch"
-                    Icon="bi bi-bank2" />
+    <PageHeader Title="Counter Management" 
+                Subtitle="Assign and manage tellers for counters in your branch"
+                Icon="bi bi-bank2" />
+    
+    <div class="mb-4 d-flex justify-content-end">
         <BaseButton Variant="outline-primary" 
                    OnClick="RefreshData" 
                    Disabled="@isLoading"

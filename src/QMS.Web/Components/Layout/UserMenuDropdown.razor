@@ -362,7 +362,13 @@
             await OnLogout.InvokeAsync();
         }
         
+        // AuthState.Logout() will handle navigation to /account/logout
         await AuthState.Logout();
-        Navigation.NavigateTo("/login", true);
+    }
+
+    public void Dispose()
+    {
+        AuthState.OnChange -= StateHasChanged;
+        Navigation.LocationChanged -= OnLocationChanged;
     }
 }

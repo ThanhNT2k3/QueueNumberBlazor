@@ -11,35 +11,54 @@
         <p class="lead text-muted fs-5">Select a service to get your ticket</p>
     </div>
     
-    <div class="services-grid">
-        @if (services == null)
-        {
-            <div class="text-center">
-                <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status"></div>
-            </div>
-        }
-        else
-        {
-            @foreach (var service in services)
+    @if (services == null)
+    {
+        <div class="text-center">
+            <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status"></div>
+        </div>
+    }
+    else if (servicePages.Any())
+    {
+        <BaseCarousel AutoPlay="true" 
+                     AutoPlayInterval="8000" 
+                     ShowControls="true" 
+                     ShowIndicators="true"
+                     ContainerClass="services-carousel">
+            @foreach (var page in servicePages)
             {
-                <div class="service-item animate-scale-in">
-                    <div class="service-card" style="--service-color: @service.ColorCode" @onclick="() => CreateTicket(service.Id)">
-                        <div class="service-icon-wrapper" style="background: @service.ColorCode">
-                            <i class="bi @service.IconClass"></i>
-                        </div>
-                        <div class="service-content">
-                            <h3 class="service-title">@service.Name</h3>
-                            <p class="service-description">@service.Description</p>
-                        </div>
-                        <div class="service-action">
-                            <span class="tap-text">Tap to get ticket</span>
-                            <i class="bi bi-arrow-right-circle"></i>
-                        </div>
+                <BaseCarouselItem Style="min-height: 600px;">
+                    <div class="services-grid">
+                        @foreach (var service in page)
+                        {
+                            <div class="service-item animate-scale-in">
+                                <div class="service-card" style="--service-color: @service.ColorCode" @onclick="() => CreateTicket(service.Id)">
+                                    <div class="service-icon-wrapper" style="background: @service.ColorCode">
+                                        <i class="bi @service.IconClass"></i>
+                                    </div>
+                                    <div class="service-content">
+                                        <h3 class="service-title">@service.Name</h3>
+                                        <p class="service-description">@service.Description</p>
+                                    </div>
+                                    <div class="service-action">
+                                        <span class="tap-text">Tap to get ticket</span>
+                                        <i class="bi bi-arrow-right-circle"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        }
                     </div>
-                </div>
+                </BaseCarouselItem>
             }
-        }
-    </div>
+        </BaseCarousel>
+    }
+    else
+    {
+        <div class="empty-state text-center">
+            <i class="bi bi-inbox" style="font-size: 4rem; color: #cbd5e1;"></i>
+            <h3 class="mt-3">No Services Available</h3>
+            <p class="text-muted">Please contact staff for assistance</p>
+        </div>
+    }
     
     <div class="back-button-area text-center mt-5">
         <NavLink href="/kiosk" class="back-link">
@@ -55,25 +74,41 @@
         padding: 3rem 2rem;
         background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
     }
+
+    .services-carousel {
+        max-width: 1200px;
+        margin: 0 auto 3rem;
+        min-height: 700px;
+    }
+
+    /* Override base carousel background for kiosk */
+    .services-carousel .base-carousel {
+        background: transparent;
+    }
     
     .services-grid {
-        max-width: 1000px;
+        width: 100%;
+        max-width: 1200px;
         margin: 0 auto;
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+        grid-template-columns: repeat(2, 1fr);
         gap: 2rem;
+        padding: 2rem;
     }
     
     .service-card {
         background: white;
         border-radius: 24px;
-        padding: 2.5rem;
+        padding: 2rem;
         cursor: pointer;
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
         border: 3px solid transparent;
         position: relative;
         overflow: hidden;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
     }
     
     .service-card::before {
@@ -93,13 +128,14 @@
     }
     
     .service-card:hover {
-        transform: translateY(-12px);
-        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12);
+        transform: translateY(-8px) scale(1.02);
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+        border-color: var(--service-color, #667eea);
     }
     
     .service-icon-wrapper {
-        width: 90px;
-        height: 90px;
+        width: 80px;
+        height: 80px;
         border-radius: 20px;
         display: flex;
         align-items: center;
@@ -115,10 +151,11 @@
     
     .service-content {
         margin-bottom: 1.5rem;
+        flex: 1;
     }
     
     .service-title {
-        font-size: 1.75rem;
+        font-size: 1.5rem;
         font-weight: 700;
         color: #1a1a1a;
         margin-bottom: 0.75rem;
@@ -126,8 +163,9 @@
     
     .service-description {
         color: #6c757d;
-        font-size: 1.1rem;
+        font-size: 1rem;
         margin: 0;
+        line-height: 1.5;
     }
     
     .service-action {
@@ -136,6 +174,7 @@
         justify-content: space-between;
         padding-top: 1rem;
         border-top: 2px solid #f0f0f0;
+        margin-top: auto;
     }
     
     .tap-text {
@@ -174,7 +213,14 @@
         box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
         color: #007bff;
     }
-    
+
+    .empty-state {
+        padding: 4rem 2rem;
+        background: white;
+        border-radius: 24px;
+        max-width: 600px;
+        margin: 0 auto;
+    }
     
     @@keyframes scale-in {
         from { opacity: 0; transform: scale(0.9); }
@@ -194,6 +240,15 @@
     @@media (max-width: 768px) {
         .services-grid {
             grid-template-columns: 1fr;
+            gap: 1.5rem;
+        }
+
+        .service-card {
+            padding: 1.5rem;
+        }
+
+        .service-title {
+            font-size: 1.25rem;
         }
     }
 </style>
@@ -201,10 +256,20 @@
 @code {
     [Parameter] public int BranchId { get; set; }
     private IEnumerable<ServiceType>? services;
+    private List<List<ServiceType>> servicePages = new();
 
     protected override async Task OnInitializedAsync()
     {
-        services = await ServiceRepository.GetAllAsync();
+        services = (await ServiceRepository.GetAllAsync())
+            .Where(s => s.IsActive)
+            .OrderBy(s => s.Name);
+        
+        // Group services into pages of 4
+        servicePages = services
+            .Select((service, index) => new { service, index })
+            .GroupBy(x => x.index / 4)
+            .Select(g => g.Select(x => x.service).ToList())
+            .ToList();
     }
 
     private async Task CreateTicket(int serviceTypeId)

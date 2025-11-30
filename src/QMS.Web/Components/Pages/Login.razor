@@ -8,7 +8,6 @@
 @inject IQmsNotificationService NotificationService
 @inject NavigationManager Navigation
 @inject QMS.Web.Services.AuthenticationStateService AuthState
-
 @inject IJSRuntime JSRuntime
 
 <div class="login-container">
@@ -27,6 +26,8 @@
         }
 
         <div class="login-form">
+     
+
             <!-- User Selection -->
             <BaseSelect Label="Select User" 
                        Value="@selectedUserId.ToString()" 
@@ -55,7 +56,6 @@
                     </optgroup>
                 }
             </BaseSelect>
-            <div class="small text-muted mt-2">Debug: SelectedId=@selectedUserId, User=@(selectedUser?.FullName ?? "null"), Disabled=@IsLoginDisabled</div>
 
             @if (selectedUserId > 0 && selectedUser != null)
             {
@@ -168,6 +168,54 @@
 
     .login-header i {
         animation: float 3s ease-in-out infinite;
+    }
+
+    /* SSO Button Styles */
+    .btn-sso {
+        background: linear-gradient(135deg, #0066cc 0%, #004c99 100%);
+        color: white;
+        border: none;
+        border-radius: 12px;
+        padding: 1rem;
+        font-weight: 600;
+        font-size: 1rem;
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 12px rgba(0, 102, 204, 0.2);
+    }
+
+    .btn-sso:hover {
+        background: linear-gradient(135deg, #0052a3 0%, #003d7a 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(0, 102, 204, 0.3);
+        color: white;
+    }
+
+    .divider {
+        position: relative;
+        text-align: center;
+    }
+
+    .divider::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: #dee2e6;
+    }
+
+    .divider span {
+        position: relative;
+        background: white;
+        padding: 0 1rem;
+        color: #6c757d;
+        font-size: 0.875rem;
+        font-weight: 500;
     }
 
 

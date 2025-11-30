@@ -1,0 +1,35 @@
+<div class="base-carousel-item @Class" style="@Style">
+    @ChildContent
+</div>
+
+<style>
+    .base-carousel-item {
+        flex: 0 0 100%;
+        width: 100%;
+        min-width: 100%;
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .base-carousel-item img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+    }
+</style>
+
+@code {
+    [CascadingParameter] public BaseCarousel? Carousel { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public string Style { get; set; } = "";
+
+    protected override void OnInitialized()
+    {
+        // Register this item with the parent carousel
+        Carousel?.RegisterItem();
+    }
+}

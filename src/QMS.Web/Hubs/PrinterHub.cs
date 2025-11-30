@@ -5,15 +5,45 @@ namespace QMS.Web.Hubs;
 
 public class PrinterHub : Hub
 {
-    private static readonly ConcurrentDictionary<string, string> ConnectedPrinters = new();
+    private static readonly ConcurrentDictionary<string, PrinterInfo> ConnectedPrinters = new();
+    private readonly QMS.Core.Interfaces.IRepository<QMS.Domain.Entities.Branch> _branchRepository;
+
+    public PrinterHub(QMS.Core.Interfaces.IRepository<QMS.Domain.Entities.Branch> branchRepository)
+    {
+        _branchRepository = branchRepository;
+    }
+    
+    public class PrinterInfo
+    {
+        public string PrinterName { get; set; } = "";
+        public string Location { get; set; } = "";
+        public int BranchId { get; set; }
+    }
+
+    // Get list of all branches
+    public async Task<List<object>> GetBranches()
+    {
+        var branches = await _branchRepository.GetAllAsync();
+        return branches.Select(b => new 
+        { 
+            Id = b.Id, 
+            Name = b.Name,
+            Code = b.Code
+        }).ToList<object>();
+    }
     
     // Desktop Printer connects
-    public async Task RegisterPrinter(string printerName, string location)
+    public async Task RegisterPrinter(string printerName, string location, int branchId)
     {
         var connectionId = Context.ConnectionId;
-        ConnectedPrinters[connectionId] = printerName;
+        ConnectedPrinters[connectionId] = new PrinterInfo 
+        { 
+            PrinterName = printerName, 
+            Location = location, 
+            BranchId = branchId 
+        };
         
-        Console.WriteLine($"[PrinterHub] Printer '{printerName}' registered at {location} (ID: {connectionId})");
+        Console.WriteLine($"[PrinterHub] Printer '{printerName}' registered at {location} (Branch: {branchId}, ID: {connectionId})");
         
         // Notify all clients that a new printer is available
         await Clients.All.SendAsync("PrinterConnected", new
@@ -21,26 +51,29 @@ public class PrinterHub : Hub
             ConnectionId = connectionId,
             PrinterName = printerName,
             Location = location,
+            BranchId = branchId,
             Status = "Online"
         });
     }
     
     // Kiosk sends print request as JSON string
-    public async Task BroadcastPrintJson(string jsonData)
+    public async Task BroadcastPrintJson(string jsonData, int branchId)
     {
-        Console.WriteLine($"[PrinterHub] Broadcasting JSON print command...");
+        Console.WriteLine($"[PrinterHub] Broadcasting JSON print command to Branch {branchId}...");
         Console.WriteLine($"[PrinterHub] JSON: {jsonData}");
         
-        if (ConnectedPrinters.Any())
+        var targetPrinters = ConnectedPrinters.Where(p => p.Value.BranchId == branchId).Select(p => p.Key).ToList();
+        
+        if (targetPrinters.Any())
         {
-            // Send JSON string to all connected printers
-            await Clients.All.SendAsync("PrintCommandJson", jsonData);
-            Console.WriteLine($"[PrinterHub] JSON broadcasted to {ConnectedPrinters.Count} printer(s)");
+            // Send JSON string to connected printers in the specific branch
+            await Clients.Clients(targetPrinters).SendAsync("PrintCommandJson", jsonData);
+            Console.WriteLine($"[PrinterHub] JSON broadcasted to {targetPrinters.Count} printer(s) in Branch {branchId}");
         }
         else
         {
-            Console.WriteLine($"[PrinterHub] No printers connected");
-            await Clients.Caller.SendAsync("PrintError", "No printers available");
+            Console.WriteLine($"[PrinterHub] No printers connected for Branch {branchId}");
+            await Clients.Caller.SendAsync("PrintError", $"No printers available for Branch {branchId}");
         }
     }
     
@@ -101,7 +134,9 @@ public class PrinterHub : Hub
         var printers = ConnectedPrinters.Select(p => new
         {
             ConnectionId = p.Key,
-            PrinterName = p.Value,
+            PrinterName = p.Value.PrinterName,
+            Location = p.Value.Location,
+            BranchId = p.Value.BranchId,
             Status = "Online"
         }).ToList<object>();
         
@@ -112,15 +147,15 @@ public class PrinterHub : Hub
     {
         var connectionId = Context.ConnectionId;
         
-        if (ConnectedPrinters.TryRemove(connectionId, out var printerName))
+        if (ConnectedPrinters.TryRemove(connectionId, out var printerInfo))
         {
-            Console.WriteLine($"[PrinterHub] Printer '{printerName}' disconnected (ID: {connectionId})");
+            Console.WriteLine($"[PrinterHub] Printer '{printerInfo.PrinterName}' disconnected (ID: {connectionId})");
             
             // Notify all clients
             await Clients.All.SendAsync("PrinterDisconnected", new
             {
                 ConnectionId = connectionId,
-                PrinterName = printerName
+                PrinterName = printerInfo.PrinterName
             });
         }
         
